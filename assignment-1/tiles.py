@@ -8,8 +8,11 @@ class Tile(object):
         self.y = y
         self.occupied = None
 
-    def set_occupied(self, ship_identity: Tuple[int]):
+    def set_occupied(self, ship_identity: Tuple[int, ...]):
         self.occupied = ship_identity
+
+    def set_unoccupied(self):
+        self.occupied = None
 
     def __repr__(self):
         return f"Tile({self.x}, {self.y}, {self.occupied})"
