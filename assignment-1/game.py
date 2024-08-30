@@ -1,10 +1,12 @@
-from typing import List, Type
+from typing import List, Type, Tuple
 import numpy as np
 from numpy.typing import NDArray
 from enum import Enum
 
-MAP_SIZE = 4
-LOWER_BOUND = 0
+import constants as c
+import utils as u
+from tiles import Tile, StartTile, GoalTile
+
 
 class Direction(Enum):
     UP = (0, -1)
@@ -12,72 +14,95 @@ class Direction(Enum):
     LEFT = (-1, 0)
     RIGHT = (1, 0)
 
-class Ship:
-    @staticmethod
-    def clamp(n):
-        return max(LOWER_BOUND, min(n, MAP_SIZE))
 
-    clamp_ = np.vectorize(clamp)
-    
-    def __init__(self, x: NDArray[np.int8], y: NDArray[np.int8], size: int, is_vertical: bool) -> None:
+class Ship:
+    def __init__(self, x: int, y: int, size: int, is_vertical: bool) -> None:
         self.x = x
         self.y = y
-        self.size = size
+        self.size = abs(size)
         self.is_vertical = is_vertical
         # may need another variable to indicate the target spaceship
-    
 
     def move(self, direction: Direction):
-        # arbaaz the goat
-        # do we check if legal move here or do we handle it later in the chain
+        """Moves the ship"""
         dx, dy = direction.value
 
         self.x += dx
         self.y += dy
 
-        self.x = Ship.clamp_(self.x)
-        self.y = Ship.clamp_(self.y)
-        
-        return
-        
-class Tile:
-    def __init__(self, x: int, y: int) -> None:
-        self.x = x
-        self.y = y
-        self.occupied = False
-        self.is_goal = False
-    
-    def set_goal(self):
-        try:
-            assert not self.occupied
-            self.is_goal = True
-        except AssertionError:
-            # deal with this
-            pass
+        self.x = u.clamp(self.x)
+        self.y = u.clamp(self.y)
 
-    def set_occupied(self):
-        try:
-            assert not self.is_goal # Do we allow goal tile to be occupied
-            self.occupied = True
-        except AssertionError:
-            # deal with this
-            pass
-            
-    # having the set of occupied tiles would be easier to check than all of the ships coordinates?
-    # generate Tiles then set occupied
+    def occupy(self, board: List[List[Tile]]) -> None:
+        x, y = self.x, self.y
+        print(x, y, self.size)
+        for d in range(self.size):
+            print(x, y, d)
+            if self.is_vertical:
+                board[x][y + d].set_occupied(self.identity())
+            else:
+                board[x + d][y].set_occupied(self.identity())
+
+    def identity(self) -> Tuple[int]:
+        return (self.x, self.y, self.size, int(self.is_vertical))
+
 
 class SpaceJamm:
-    def __init__(self, board_size: int):
-        self.board_size = board_size
+    def __init__(self, filename: str) -> None:
+        with open(filename) as file:
+            lines = file.read().split("\n")
+        self.board_size = int(lines[0])
+        self.initialize_board()
+        self.initialize_tiles(lines[1:])
+
+    def initialize_board(self) -> None:
         self.board = []
-        for i in range(board_size):
-            for j in range(board_size):
-                self.board.append(Tile(i, j))
-    
-    # Set start tiles, goal tile, occupied tiles
-    # keep order
-    def set_board(self):
-        pass
+        self.ships = []
+
+        for i in range(self.board_size):
+            row = []
+            for j in range(self.board_size):
+                row.append(Tile(i, j))
+            self.board.append(row)
+
+    def initialize_tiles(self, lines: List[str]) -> None:
+        """Initializes the board with ships, goal & start tiles"""
+        self.initialize_primary_tiles(lines[0], lines[1])
+        self.initialize_ships(lines[2:])
+
+    def initialize_primary_tiles(self, start, end):
+        (xs, ys) = tuple(int(a) for a in start.split(" "))
+        self.board[xs][ys] = StartTile(xs, ys)
+
+        (xg, yg) = tuple(int(a) for a in end.split(" "))
+        self.board[xg][yg] = GoalTile(xg, yg)
+
+    def initialize_ships(self, lines):
+        for line in lines:
+            if not line:
+                continue
+            (x, y, s) = tuple(int(a) for a in line.split(" "))
+            ship = Ship(x, y, abs(s), s < 0)
+            ship.occupy(self.board)
+            self.ships.append(ship)
+            print("=" * 80)
+            for row in self.board:
+                print(row)
+            print("=" * 80)
+
+    def show_board(self) -> None:
+        for row in self.board:
+            for tile in row:
+                if isinstance(tile, StartTile):
+                    print(c.START_SYMBOL, end="")
+                elif isinstance(tile, GoalTile):
+                    print(c.GOAL_SYMBOL, end="")
+                else:
+                    print(
+                        c.SHIP_SYMBOL if tile.occupied is not None else c.EMPTY_SYMBOL,
+                        end="",
+                    )
+            print("")
 
     # Define move gen here right
     def move_gen(self):
@@ -85,4 +110,3 @@ class SpaceJamm:
 
     def goal_test(self):
         pass
-        
