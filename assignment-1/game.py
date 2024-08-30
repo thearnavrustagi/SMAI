@@ -71,11 +71,11 @@ class SpaceJamm:
         self.initialize_ships(lines[2:])
 
     def initialize_primary_tiles(self, start, end):
-        (xs, ys) = tuple(int(a) for a in start.split(" "))
-        self.board[xs][ys] = StartTile(xs, ys)
+        (self.xs, self.ys) = tuple(int(a) for a in start.split(" "))
+        self.board[self.xs][self.ys] = StartTile(self.xs, self.ys)
 
-        (xg, yg) = tuple(int(a) for a in end.split(" "))
-        self.board[xg][yg] = GoalTile(xg, yg)
+        (self.xg, self.yg) = tuple(int(a) for a in end.split(" "))
+        self.board[self.xg][self.yg] = GoalTile(self.xg, self.yg)
 
     def initialize_ships(self, lines):
         for line in lines:
@@ -109,4 +109,7 @@ class SpaceJamm:
         pass
 
     def goal_test(self):
-        pass
+        for tile in self.board[self.xs][1:-1]:
+            if tile.occupied:
+                return False
+        return True
