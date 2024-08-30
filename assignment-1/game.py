@@ -61,78 +61,69 @@ class Ship:
             else:
                 board[x + d][y].set_occupied(self.identity())
 
-    def tail_removal(self, x: int, y: int) -> Tuple[int, int]:
+    def unoccupy(self, board: List[List[Tile]], x=None, y=None) -> None:
         """Returns index of tile to be set to unoccupied after a move"""
-        if x == 1 or y == 1:
-            return (self.x, self.y)
-        elif x == -1:
-            return (self.x + self.size - 1, self.y)
-        else:
-            return (self.x, self.y + self.size - 1)
+        if x == None:
+            x = self.x
+        if y == None:
+            y = self.y
+        # x, y = self.x, self.y
+
+        # print(x, y, self.size)
+        for d in range(self.size):
+            # print(x, y, d)
+            if self.is_vertical:
+                board[x][y + d].set_unoccupied()
+            else:
+                board[x + d][y].set_unoccupied()
 
     def valid_moves(self, board: List[List[Tile]]) -> List[List[List[Tile]]]:
         moves = []
 
         if self.is_vertical:
-            direction = Direction.list()[:2] # UP DOWN
+            direction = Direction.list()[:2]  # UP DOWN
         else:
-            direction = Direction.list()[2:] # LEFT RIGHT
+            direction = Direction.list()[2:]  # LEFT RIGHT
 
         for move in direction:
-            x, y = move
+            for factor in range(1, c.MAP_SIZE):
+                x, y = move
+                x *= factor
+                y *= factor
 
-            new_x = self.x + x
-            new_y = self.y + y
-            
-            x_bounds = abs(x) * (new_x + self.size - 1) # one of x_bounds and y_bounds is 0
-            y_bounds = abs(y) * (new_y + self.size - 1)
+                new_x = self.x + x
+                new_y = self.y + y
 
-            collision = (
-                board[new_x][new_y].occupied
-                and self.identity() != board[new_x][new_y].occupied # checks that occupied tile isnt its own
-            )
+                x_flag = int(not not x)
+                y_flag = int(not not y)
+                
+                x_bounds = x_flag * (
+                    new_x + self.size - 1
+                )  # one of x_bounds and y_bounds is 0
+                y_bounds = y_flag * (new_y + self.size - 1)
 
-            if (
-                not collision
-                and new_x >= c.LOWER_BOUND
-                and new_y >= c.LOWER_BOUND
-                and x_bounds <= c.UPPER_BOUND
-                and y_bounds <= c.UPPER_BOUND
-            ):
-                neighbour_state = deepcopy(board)
-                self.occupy(neighbour_state, new_x, new_y)
+                if (
+                    new_x < c.LOWER_BOUND
+                    or new_y < c.LOWER_BOUND
+                    or x_bounds > c.UPPER_BOUND
+                    or y_bounds > c.UPPER_BOUND
+                ):
+                    continue
 
-                x_tail, y_tail = self.tail_removal(x, y)
-                neighbour_state[x_tail][y_tail].set_unoccupied()
+                collision = False
+                for i in range(self.size):
+                    x_idx, y_idx = new_x + x_flag * i, new_y + y_flag * i
+                    if board[x_idx][y_idx].occupied and self.identity() != board[x_idx][y_idx].occupied:
+                        collision = True
+                        break
 
-                moves.append(neighbour_state)
+                if not collision:
+                    neighbour_state = deepcopy(board)
+                    self.unoccupy(neighbour_state)
+                    self.occupy(neighbour_state, new_x, new_y)
 
-        """keep in case something breaks, gotta add .occupied after each "board[][]" in the if conditions"""
-        # if self.is_vertical:
-        #     if not board[self.x-1][self.y] and self.x >= c.LOWER_BOUND:
-        #         neighbour_state = deepcopy(board)
-        #         self.occupy(neighbour_state, self.x-1, self.y)
-        #         neighbour_state[self.x][self.y + self.size-1].set_unoccupied()
-        #         moves.append(neighbour_state)
-        #
-        #     if not board[self.x+1][self.y] and self.x <= c.MAP_SIZE:
-        #         neighbour_state = deepcopy(board)
-        #         self.occupy(neighbour_state, self.x+1, self.y)
-        #         neighbour_state[self.x][self.y].set_unoccupied()
-        #         moves.append(neighbour_state)
-        #
-        # else:
-        #     if not board[self.x][self.y-1] and self.y >= c.LOWER_BOUND:
-        #         neighbour_state = deepcopy(board)
-        #         self.occupy(neighbour_state, self.x, self.y-1)
-        #         neighbour_state[self.x + self.size-1][self.y].set_unoccupied()
-        #         moves.append(neighbour_state)
-        #
-        #     if not board[self.x][self.y+1] and self.y <= c.MAP_SIZE:
-        #         neighbour_state = deepcopy(board)
-        #         self.occupy(neighbour_state, self.x, self.y+1)
-        #         neighbour_state[self.x][self.y].set_unoccupied()
-        #         moves.append(neighbour_state)
+
+                    moves.append(neighbour_state)
 
         return moves
 
@@ -218,4 +209,5 @@ class SpaceJamm:
         for tile in self.board[self.xs][1:-1]:
             if tile.occupied:
                 return False
+        print("GOAL STATE!!!")
         return True
