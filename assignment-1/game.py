@@ -1,5 +1,6 @@
 from typing import List, Type, Tuple
 from enum import Enum
+import random
 
 import constants as c
 import utils as u
@@ -96,7 +97,7 @@ class Ship:
 
                 x_flag = int(not not x)
                 y_flag = int(not not y)
-                
+
                 x_bounds = x_flag * (
                     new_x + self.size - 1
                 )  # one of x_bounds and y_bounds is 0
@@ -113,7 +114,10 @@ class Ship:
                 collision = False
                 for i in range(self.size):
                     x_idx, y_idx = new_x + x_flag * i, new_y + y_flag * i
-                    if board[x_idx][y_idx].occupied and self.identity() != board[x_idx][y_idx].occupied:
+                    if (
+                        board[x_idx][y_idx].occupied
+                        and self.identity() != board[x_idx][y_idx].occupied
+                    ):
                         collision = True
                         break
 
@@ -121,7 +125,6 @@ class Ship:
                     neighbour_state = deepcopy(board)
                     self.unoccupy(neighbour_state)
                     self.occupy(neighbour_state, new_x, new_y)
-
 
                     moves.append(neighbour_state)
 
@@ -169,25 +172,31 @@ class SpaceJamm:
             ship = Ship(x, y, abs(s), s < 0)
             ship.occupy(self.board)
             self.ships.append(ship)
-            print("=" * 80)
-            for row in self.board:
-                print(row)
-            print("=" * 80)
 
     @staticmethod
     def print_board(board) -> None:
+        colors = {}
         for row in board:
             for tile in row:
                 if isinstance(tile, StartTile):
-                    print(c.START_SYMBOL, end="")
+                    u.console.print(c.START_SYMBOL, end="", style="bold green")
                 elif isinstance(tile, GoalTile):
-                    print(c.GOAL_SYMBOL, end="")
+                    u.console.print(c.GOAL_SYMBOL, end="", style="bold red")
                 else:
-                    print(
-                        c.SHIP_SYMBOL if tile.occupied is not None else c.EMPTY_SYMBOL,
+                    symbol, style = c.EMPTY_SYMBOL, "bold white"
+                    if tile.occupied is not None:
+                        symbol = c.SHIP_SYMBOL
+                        if tile.occupied not in colors:
+                            colors[
+                                tile.occupied
+                            ] = f"bold {random.choice(c.VALID_COLORS)}"
+                        style = colors[tile.occupied]
+                    u.console.print(
+                        symbol,
+                        style=style,
                         end="",
                     )
-            print("")
+            u.console.print("")
 
     def show_board(self) -> None:
         self.print_board(self.board)
@@ -198,12 +207,17 @@ class SpaceJamm:
         for ship in self.ships:
             moves = ship.valid_moves(self.board)
             if moves:
+                u.console.print(
+                    f"Showing all possible moves for ship [green]{ship.identity()}[/green]",
+                    style="bold white",
+                )
                 for move in moves:
-                    print("=" * 80)
                     SpaceJamm.print_board(move)
                     print("=" * 80)
                     states.append(move)
-        print(f"Number of neighbouring states = {len(states)}")
+        u.console.print(
+            f"Number of neighbouring states = {len(states)}", style="bold green"
+        )
 
     def goal_test(self):
         for tile in self.board[self.xs][1:-1]:

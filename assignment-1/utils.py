@@ -1,4 +1,7 @@
 import constants as c
+from rich.console import Console
+
+console = Console()
 
 
 def clamp(n: int):
