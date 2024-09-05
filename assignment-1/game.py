@@ -1,6 +1,7 @@
 from typing import List, Type, Tuple
 from enum import Enum
 import random
+import pygame
 
 import constants as c
 import utils as u
@@ -14,6 +15,11 @@ class ExtendedEnum(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class GameObject(object):
+    def get_blitables():
+        pass
+
+
 class Direction(ExtendedEnum):
     UP = (0, -1)
     DOWN = (0, 1)
@@ -21,13 +27,53 @@ class Direction(ExtendedEnum):
     RIGHT = (1, 0)
 
 
-class Ship:
+class Ship(GameObject):
     def __init__(self, x: int, y: int, size: int, is_vertical: bool) -> None:
         self.x = x
         self.y = y
         self.size = abs(size)
         self.is_vertical = is_vertical
+
+        self.build_sprite()
         # may need another variable to indicate the target spaceship
+
+    def build_sprite(self):
+        tile_size = c.TILE_SIZE
+        factor = c.FACTOR
+        sx, sy = tile_size, tile_size
+        beam_surface = pygame.transform.scale(
+            pygame.image.load("./assets/beam.png"), (tile_size // 4, c.PADDING * 4)
+        )
+        if not self.is_vertical:
+            beam_surface = pygame.transform.rotate(beam_surface, 90)
+        block_surface = pygame.transform.scale_by(
+            pygame.image.load("./assets/block.png"), factor
+        )
+
+        if self.is_vertical:
+            sy = (tile_size + 1) * self.size + c.PADDING * 2 * (self.size - 1)
+        else:
+            sx = (tile_size + 1) * self.size + c.PADDING * 2 * (self.size - 1)
+
+        self.sprite = pygame.Surface((sx, sy), pygame.SRCALPHA)
+        self.blit_coordinates = (c.GRID_SIZE * self.x, c.GRID_SIZE * self.y)
+        for i in range(self.size):
+            if not self.is_vertical:
+                location = (i * c.GRID_SIZE, 0)
+                beam_location = (
+                    c.GRID_SIZE * i - c.PADDING * 4,
+                    c.PADDING + tile_size // 4,
+                )
+            else:
+                location = (0, i * c.GRID_SIZE)
+                beam_location = (
+                    c.PADDING + tile_size // 4,
+                    c.GRID_SIZE * i - 4 * c.PADDING,
+                )
+            self.sprite.blit(block_surface, location)
+            if i < 1:
+                continue
+            self.sprite.blit(beam_surface, beam_location)
 
     def move(self, direction: Direction):
         """MAY BE BROKEN, HAVE NOT TESTED YET"""
@@ -133,6 +179,9 @@ class Ship:
     def identity(self) -> Tuple[int, ...]:
         return (self.x, self.y, self.size, int(self.is_vertical))
 
+    def get_blitables(self):
+        return self.sprite, self.blit_coordinates
+
 
 class SpaceJamm:
     def __init__(self, filename: str) -> None:
@@ -159,10 +208,12 @@ class SpaceJamm:
 
     def initialize_primary_tiles(self, start, end):
         (self.xs, self.ys) = tuple(int(a) for a in start.split(" "))
-        self.board[self.xs][self.ys] = StartTile(self.xs, self.ys)
+        self.start_tile = StartTile(self.xs, self.ys)
+        self.board[self.xs][self.ys] = self.start_tile
 
         (self.xg, self.yg) = tuple(int(a) for a in end.split(" "))
-        self.board[self.xg][self.yg] = GoalTile(self.xg, self.yg)
+        self.goal_tile = GoalTile(self.xg, self.yg)
+        self.board[self.xg][self.yg] = self.goal_tile
 
     def initialize_ships(self, lines) -> None:
         for line in lines:
@@ -218,6 +269,13 @@ class SpaceJamm:
         u.console.print(
             f"Number of neighbouring states = {len(states)}", style="bold green"
         )
+
+    def get_blitables(self):
+        for row in self.board:
+            for el in row:
+                yield el.get_blitables()
+        for ship in self.ships:
+            yield ship.get_blitables()
 
     def goal_test(self):
         for tile in self.board[self.xs][1:-1]:
