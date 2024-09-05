@@ -18,6 +18,13 @@ class Tile(object):
     def get_blitables(self):
         return self.sprite, (self.x * c.GRID_SIZE, self.y * c.GRID_SIZE)
 
+    def compress(self):
+        return (self.x, self.y)
+
+    @staticmethod
+    def decompress(data: Tuple[int, int]):
+        return Tile(*data)
+
 
 class GoalTile(Tile):
     def __init__(self, x: int, y: int) -> None:
@@ -25,6 +32,10 @@ class GoalTile(Tile):
         self.sprite = pygame.transform.scale_by(
             pygame.image.load("./assets/goal.png"), c.FACTOR
         )
+
+    @staticmethod
+    def decompress(data: Tuple[int, int]):
+        return GoalTile(*data)
 
 
 class StartTile(Tile):
@@ -34,3 +45,7 @@ class StartTile(Tile):
             pygame.image.load("./assets/ship.png"), c.FACTOR
         )
         self.sprite = pygame.transform.rotate(self.sprite, angle)
+
+    @staticmethod
+    def decompress(data: Tuple[int, int]):
+        return StartTile(*data)

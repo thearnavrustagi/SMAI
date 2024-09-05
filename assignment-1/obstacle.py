@@ -1,5 +1,5 @@
 import pygame
-from typing import List
+from typing import List, Tuple
 
 import atomics as a
 import constants as c
@@ -8,19 +8,26 @@ import constants as c
 class Obstacle(a.GameObject):
     obstacles_manufactured = 0
 
-    def __init__(self, x: int, y: int, size: int, is_vertical: bool) -> None:
+    def __init__(self, x: int, y: int, size: int, is_vertical: bool, uid=None) -> None:
         self.x = x
         self.y = y
         self.size = abs(size)
         self.is_vertical = is_vertical
-        self.uid = Obstacle.obstacles_manufactured = Obstacle.obstacles_manufactured + 1
+        if uid == None:
+            self.uid = Obstacle.obstacles_manufactured = (
+                Obstacle.obstacles_manufactured + 1
+            )
+        else:
+            self.uid = uid
 
         self.blit_coordinates = None
         self.sprite = None
         self.identity = None
+        self.hitbox = set()
 
         self.build_sprite()
         self.create_identity()
+        self.build_hitbox()
 
     def build_sprite(self):
         """Builds the sprite for each obstacle"""
@@ -62,63 +69,33 @@ class Obstacle(a.GameObject):
             self.sprite.blit(beam_surface, beam_location)
 
     def create_identity(self):
-        wx = self.x + int(not self.is_vertical) * self.size
-        wy = self.y + int(self.is_vertical) * self.size
-        self.identity = (self.uid, self.x, self.y, wx, wy)
+        self.identity = (self.uid, self.x, self.y, self.size, self.is_vertical)
 
-    """
-    def valid_moves(self, board) -> List[List[List[Tile]]]:
+    def compress(self):
+        return self.identity
+
+    @staticmethod
+    def decompress(data):
+        return Obstacle(*data[1:], uid=data[0])
+
+    def build_hitbox(self):
+        for i in range(self.size):
+            x = self.x + int(not self.is_vertical) * i
+            y = self.y + int(self.is_vertical) * i
+            self.hitbox.add((x, y))
+
+    def get_possible_moves(self, board_size: int) -> List[Tuple[int, int]]:
         moves = []
-
-        if self.is_vertical:
-            direction = Direction.list()[:2]  # UP DOWN
-        else:
-            direction = Direction.list()[2:]  # LEFT RIGHT
-
-        for move in direction:
-            for factor in range(1, c.MAP_SIZE):
-                x, y = move
-                x *= factor
-                y *= factor
-
-                new_x = self.x + x
-                new_y = self.y + y
-
-                x_flag = int(not not x)
-                y_flag = int(not not y)
-
-                x_bounds = x_flag * (
-                    new_x + self.size - 1
-                )  # one of x_bounds and y_bounds is 0
-                y_bounds = y_flag * (new_y + self.size - 1)
-
-                if (
-                    new_x < c.LOWER_BOUND
-                    or new_y < c.LOWER_BOUND
-                    or x_bounds > c.UPPER_BOUND
-                    or y_bounds > c.UPPER_BOUND
-                ):
-                    continue
-
-                collision = False
-                for i in range(self.size):
-                    x_idx, y_idx = new_x + x_flag * i, new_y + y_flag * i
-                    if (
-                        board[x_idx][y_idx].occupied
-                        and self.identity() != board[x_idx][y_idx].occupied
-                    ):
-                        collision = True
-                        break
-
-                if not collision:
-                    neighbour_state = deepcopy(board)
-                    self.unoccupy(neighbour_state)
-                    self.occupy(neighbour_state, new_x, new_y)
-
-                    moves.append(neighbour_state)
-
+        for i in range(board_size - self.size + 1):
+            if i + self.size > board_size:
+                break
+            x = i * int(not self.is_vertical) + self.x * int(self.is_vertical)
+            y = i * int(self.is_vertical) + self.y * int(not self.is_vertical)
+            moves.append((x, y))
         return moves
-        """
 
     def get_blitables(self):
         return self.sprite, self.blit_coordinates
+
+    def __repr__(self) -> str:
+        return f"Obstacle[{self.uid}] {self.identity} {self.hitbox}"

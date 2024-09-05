@@ -24,9 +24,9 @@ VALID_COLORS = (
     "magenta blue cyan white yellow bright_blue bright_yellow bright_magenta".split()
 )
 
-GAME_SIZE = (960, 960)
+GAME_SIZE = (1080, 1080)
 SPACE_BG = (8, 12, 26)
-GRID_SIZE = 160
+GRID_SIZE = 124
 PADDING = 8
 SPRITE_SIZE = 32
 

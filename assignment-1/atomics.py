@@ -10,3 +10,9 @@ class ExtendedEnum(Enum):
 class GameObject(object):
     def get_blitables():
         pass
+
+    def compress():
+        pass
+
+    def decompress():
+        pass
