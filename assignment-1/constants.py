@@ -1,3 +1,13 @@
+import atomics as a
+
+
+class Direction(a.ExtendedEnum):
+    UP = (0, -1)
+    DOWN = (0, 1)
+    LEFT = (-1, 0)
+    RIGHT = (1, 0)
+
+
 MAP_SIZE = 4
 
 LOWER_BOUND = 0
