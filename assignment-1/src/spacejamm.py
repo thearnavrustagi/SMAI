@@ -39,7 +39,6 @@ class SpaceJamm:
             self.blit_board()
             sleep(1)
 
-        sleep(5)
         exit(0)
 
     def depth_first_search(self):

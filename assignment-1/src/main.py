@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 import json
 import pygame
+from time import sleep
 
 from board import Board
 from spacejamm import SpaceJamm
@@ -14,14 +15,15 @@ def get_parser() -> ArgumentParser:
             prog="SpaceJamm",
             description="State space search for the game Space Jamm"
             )
-    parser.add_argument('--sim', action='store_true')
-    parser.add_argument('--path')
+    parser.add_argument('-s', '--sim', action='store_true')
+    parser.add_argument('-p', '--path')
     parser.add_argument('--search', choices=['dfs', 'bfs'], help='choose the type of search')
     parser.add_argument('--mapgen', type=int, help="give map_size and n_obs", nargs=2)
+    parser.add_argument('-d', '--disp', action='store_true')
 
     return parser
 
-def simulate(game, trail):
+def simulate(game, trail=[]):
     config = json.load(open("pygame_config.json"))
 
     while config["running"]:
@@ -29,7 +31,9 @@ def simulate(game, trail):
             pgm.handle_events(event, config)
 
         game.blit_board()
-        game.animate(trail)
+        if trail:
+            game.animate(trail)
+        sleep(5)
 
     pygame.quit()
     
@@ -55,6 +59,13 @@ def main():
         board = Board()
         m = board.mapgen(int(map_size), int(n_obs))
         print(board.dump(m))
+
+    if args.disp and os.path.exists(str(args.path)):
+        screen = pygame.display.set_mode(c.GAME_SIZE)
+        space_jam = SpaceJamm(args.path, screen)
+
+        simulate(space_jam)
+        
 
 if __name__ == "__main__":
     main()
