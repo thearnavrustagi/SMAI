@@ -7,11 +7,11 @@ from obstacle import Obstacle
 console = Console()
 
 
-def clamp(n: int):
-    return max(c.LOWER_BOUND, min(n, c.UPPER_BOUND))
+def clamp(n: int, lower_bound, upper_bound):
+    return int(max(lower_bound, min(n, upper_bound)))
 
 
-def collisions(obstacle_set: Tuple[int, int], obstacles: List[Obstacle]) -> bool:
+def collisions(obstacle_set: set[Tuple[int, int]], obstacles: List[Obstacle]) -> bool:
     for obstacle in obstacles:
         if len(obstacle_set & obstacle.hitbox):
             return True

@@ -58,11 +58,18 @@ def main():
         map_size, n_obs = args.mapgen
         board = Board()
         m = board.mapgen(int(map_size), int(n_obs))
+        with open("../maps/test_map.txt", "w") as f:
+            f.write(board.dump(m))
         print(board.dump(m))
 
     if args.disp and os.path.exists(str(args.path)):
         screen = pygame.display.set_mode(c.GAME_SIZE)
         space_jam = SpaceJamm(args.path, screen)
+
+        simulate(space_jam)
+    elif args.disp:
+        screen = pygame.display.set_mode(c.GAME_SIZE)
+        space_jam = SpaceJamm("../maps/test_map.txt", screen)
 
         simulate(space_jam)
         

@@ -2,7 +2,7 @@ from typing import List
 import pygame
 from math import atan2, pi
 
-from numpy.random import randint
+from numpy.random import randint, normal
 import atomics as a
 import constants as c
 import utils as u
@@ -29,33 +29,32 @@ class Board(a.GameObject):
         board = Board()
         board.size = map_size
         
-        start_row = (map_size + 1) // 2
+        start_row = (map_size + 1) // 2 - 1
         MAX_HEIGHT = map_size - start_row + 1
         board.start_tile = StartTile(0, start_row)
         board.goal_tile = GoalTile(map_size-1, start_row)
 
         board.obstacles = []
-        board.obstacles.append(Obstacle(0, start_row, map_size, False))
-        board.obstacles[0].build_hitbox()
+        board.obstacles.append(Obstacle(0, start_row, map_size, True))
         
         while n_obs:
             s = randint(2, MAX_HEIGHT)
-            if randint(3):
+            if not randint(3):
                 s = -s
-            while True:
+            for _ in range(20):
                 if s < 0:
+                    y = u.clamp(normal(map_size // 2, map_size // 2 - 2), 0, map_size+s-1)
                     x = randint(map_size + s)
-                    y = randint(map_size)
                 else:
-                    x = randint(map_size)
-                    y = randint(map_size - s)
+                    y = u.clamp(normal(map_size // 2, map_size // 2), 0, map_size-s-1)
+                    x = randint(map_size - s)
+
+                if y == start_row:
+                    y += 1
                     
-                temp = Obstacle(x, y, s, s > 0)
-                temp.build_hitbox()
-                valid = False
-                for obstacle in board.obstacles:
-                    if temp.hitbox & obstacle.hitbox != set():
-                        break
+                temp = Obstacle(x, y, abs(s), s < 0)
+                if u.collisions(temp.hitbox, board.obstacles):
+                    continue
                 else:
                     valid = True
                     board.obstacles.append(temp)
