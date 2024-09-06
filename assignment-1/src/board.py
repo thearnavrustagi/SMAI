@@ -2,6 +2,7 @@ from typing import List
 import pygame
 from math import atan2, pi
 
+from numpy.random import randint
 import atomics as a
 import constants as c
 import utils as u
@@ -10,24 +11,62 @@ from obstacle import Obstacle
 
 
 class Board(a.GameObject):
-    def __new__(cls):
-        """Make Board a singleton class"""
-        if not hasattr(cls, "instance"):
-            cls.instance = super(Board, cls).__new__(cls)
-        return cls.instance
-
     def __init__(self):
         """
         self.tile_sprite -> tile sprite to be used for the board
         self.occupied -> set of occupied tiles, Tuple of (x, y) -> Obstacle object
         """
         self.tile_sprite = pygame.transform.scale_by(
-            pygame.image.load("./assets/grid.png"), c.FACTOR
+            pygame.image.load("../assets/grid.png"), c.FACTOR
         )
 
         self.size = -1
         self.start_tile, self.goal_tile = None, None
         self.obstacles = []
+
+    @staticmethod
+    def mapgen(map_size, n_obs):
+        board = Board()
+        board.size = map_size
+        
+        start_row = (map_size + 1) // 2
+        MAX_HEIGHT = map_size - start_row + 1
+        board.start_tile = StartTile(0, start_row)
+        board.goal_tile = GoalTile(map_size-1, start_row)
+
+        board.obstacles = []
+        board.obstacles.append(Obstacle(0, start_row, map_size, False))
+        board.obstacles[0].build_hitbox()
+        
+        while n_obs:
+            s = randint(2, MAX_HEIGHT)
+            if randint(3):
+                s = -s
+            while True:
+                if s < 0:
+                    x = randint(map_size + s)
+                    y = randint(map_size)
+                else:
+                    x = randint(map_size)
+                    y = randint(map_size - s)
+                    
+                temp = Obstacle(x, y, s, s > 0)
+                temp.build_hitbox()
+                valid = False
+                for obstacle in board.obstacles:
+                    if temp.hitbox & obstacle.hitbox != set():
+                        break
+                else:
+                    valid = True
+                    board.obstacles.append(temp)
+
+                if valid:
+                    break
+            n_obs -= 1
+
+        board.obstacles = board.obstacles[1:]
+
+        return board
 
     @staticmethod
     def initialize_board(lines):
@@ -39,6 +78,19 @@ class Board(a.GameObject):
         board.initialize_obstacles(lines[3:])
 
         return board
+
+    @staticmethod
+    def dump(board: "Board"):
+        out = ""
+        out += f"{board.size}\n"
+        out += f"{board.start_tile.x} {board.start_tile.y}\n"
+        out += f"{board.goal_tile.x} {board.goal_tile.y}\n"
+        for obstacle in board.obstacles:
+            is_vert = 1 if obstacle.is_vertical else -1
+            out += f"{obstacle.x} {obstacle.y} {is_vert * obstacle.size}\n"
+
+        return out
+            
 
     def initialize_primary_tiles(self, start, end):
         xg, yg = tuple(int(a) for a in end.split(" ")) if isinstance(end, str) else end

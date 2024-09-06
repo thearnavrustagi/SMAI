@@ -35,12 +35,12 @@ class Obstacle(a.GameObject):
         factor = c.FACTOR
         sx, sy = tile_size, tile_size
         beam_surface = pygame.transform.scale(
-            pygame.image.load("./assets/beam.png"), (tile_size // 4, c.PADDING * 4)
+            pygame.image.load("../assets/beam.png"), (tile_size // 4, c.PADDING * 4)
         )
         if not self.is_vertical:
             beam_surface = pygame.transform.rotate(beam_surface, 90)
         block_surface = pygame.transform.scale_by(
-            pygame.image.load("./assets/block.png"), factor
+            pygame.image.load("../assets/block.png"), factor
         )
 
         if self.is_vertical:

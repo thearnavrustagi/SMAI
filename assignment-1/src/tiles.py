@@ -9,7 +9,7 @@ class Tile(object):
         self.x = x
         self.y = y
         self.sprite = pygame.transform.scale_by(
-            pygame.image.load("./assets/grid.png"), c.FACTOR
+            pygame.image.load("../assets/grid.png"), c.FACTOR
         )
 
     def __repr__(self):
@@ -30,7 +30,7 @@ class GoalTile(Tile):
     def __init__(self, x: int, y: int) -> None:
         super().__init__(x, y)
         self.sprite = pygame.transform.scale_by(
-            pygame.image.load("./assets/goal.png"), c.FACTOR
+            pygame.image.load("../assets/goal.png"), c.FACTOR
         )
 
     @staticmethod
@@ -42,7 +42,7 @@ class StartTile(Tile):
     def __init__(self, x: int, y: int, angle=0) -> None:
         super().__init__(x, y)
         self.sprite = pygame.transform.scale_by(
-            pygame.image.load("./assets/ship.png"), c.FACTOR
+            pygame.image.load("../assets/ship.png"), c.FACTOR
         )
         self.sprite = pygame.transform.rotate(self.sprite, angle)
 
