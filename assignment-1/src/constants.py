@@ -32,3 +32,5 @@ SPRITE_SIZE = 32
 
 TILE_SIZE = GRID_SIZE - 2 * PADDING
 FACTOR = TILE_SIZE // SPRITE_SIZE
+
+BLOCK_ASSETS = ["../assets/block-1.png", "../assets/block-2.png", "../assets/block-3.png"]

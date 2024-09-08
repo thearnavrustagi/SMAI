@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Any, Set
 from numpy.random import randint, normal
 from itertools import groupby
 import random
@@ -63,3 +63,9 @@ def obstacle_gen(map_size, n_obs, start_row, board):
             available -= temp.hitbox
             n_obs -= 1
     return board.obstacles
+
+def sum_commons(target: Set, obstacles: List["Obstacle"]) -> int:
+    commons = 0
+    for obstacle in obstacles:
+        commons += len(target & obstacle.hitbox)
+    return commons

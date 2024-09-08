@@ -17,7 +17,7 @@ def get_parser() -> ArgumentParser:
             )
     parser.add_argument('-s', '--sim', action='store_true')
     parser.add_argument('-p', '--path')
-    parser.add_argument('--search', choices=['dfs', 'bfs'], help='choose the type of search')
+    parser.add_argument('--search', choices=['dfs', 'bfs', 'best'], help='choose the type of search')
     parser.add_argument('--mapgen', type=int, help="give map_size and n_obs", nargs=2)
     parser.add_argument('-d', '--disp', action='store_true')
 
@@ -49,6 +49,8 @@ def main():
                 trail = space_jam.depth_first_search()
             case "bfs":
                 trail = space_jam.breadth_first_search()
+            case "best":
+                trail = space_jam.best_first_search()
             case _:
                 trail = space_jam.breadth_first_search()
 

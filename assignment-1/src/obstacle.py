@@ -1,4 +1,5 @@
 import pygame
+from random import choice
 from typing import List, Tuple
 
 import atomics as a
@@ -7,6 +8,7 @@ import constants as c
 
 class Obstacle(a.GameObject):
     obstacles_manufactured = 0
+    sprite_dict = {}
 
     def __init__(self, x: int, y: int, size: int, is_vertical: bool, uid=None) -> None:
         self.x = x
@@ -40,8 +42,11 @@ class Obstacle(a.GameObject):
         )
         if not self.is_vertical:
             beam_surface = pygame.transform.rotate(beam_surface, 90)
+        if self.uid not in Obstacle.sprite_dict:
+            Obstacle.sprite_dict[self.uid] = choice(c.BLOCK_ASSETS)
+        sprite = Obstacle.sprite_dict[self.uid]
         block_surface = pygame.transform.scale_by(
-            pygame.image.load("../assets/block.png"), factor
+            pygame.image.load(sprite), factor
         )
 
         if self.is_vertical:

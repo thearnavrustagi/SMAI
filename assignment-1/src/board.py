@@ -106,6 +106,20 @@ class Board(a.GameObject):
 
         return board
 
+    def get_blocked_tiles(self):
+        tiles = None
+        if self.start_tile.x == self.goal_tile.x:
+            x = self.start_tile.x
+            Y1, Y2 = self.start_tile.y, self.goal_tile.y + 1
+            tiles = set(((x,y) for y in range(Y1, Y2, 1 if Y2 > Y1 else -1)))
+        elif self.start_tile.y == self.goal_tile.y:
+            y = self.start_tile.y
+            X1, X2 = self.start_tile.x, self.goal_tile.x + 1
+            tiles = set(((x,y) for x in range(X1, X2, 1 if X2 > X1 else -1)))
+        else:
+            return -1
+        return u.sum_commons(tiles, self.obstacles)
+
     def get_blitables(self):
         for x in range(self.size):
             for y in range(self.size):
@@ -119,11 +133,13 @@ class Board(a.GameObject):
         moves = set()
         if self.start_tile.x == self.goal_tile.x:
             x = self.start_tile.x
-            for y in range(self.start_tile.y, self.goal_tile.y + 1):
+            Y1, Y2 = self.start_tile.y, self.goal_tile.y + 1
+            for y in range(Y1, Y2, 1 if Y2 > Y1 else -1):
                 moves.add((x, y))
         elif self.start_tile.y == self.goal_tile.y:
             y = self.start_tile.y
-            for x in range(self.start_tile.x, self.goal_tile.x + 1):
+            X1, X2 = self.start_tile.x, self.goal_tile.x + 1
+            for x in range(X1, X2, 1 if X2 > X1 else -1):
                 moves.add((x, y))
         else:
             return False
