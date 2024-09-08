@@ -84,6 +84,12 @@ class Obstacle(a.GameObject):
             y = self.y + int(self.is_vertical) * i
             self.hitbox.add((x, y))
 
+    def build_hitbox_mapgen(self):
+        for i in range(self.size):
+            x = self.x + int(self.is_vertical) * i
+            y = self.y + int(not self.is_vertical) * i
+            self.hitbox.add((x, y))
+
     def get_possible_moves(self, board_size: int) -> List[Tuple[int, int]]:
         moves = []
         for i in range(board_size - self.size + 1):
