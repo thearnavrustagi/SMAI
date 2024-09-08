@@ -2,13 +2,13 @@ from typing import List, Type, Tuple
 import random
 import pygame
 from time import sleep
+from collections import deque
 
 import constants as c
 import utils as u
 from tiles import Tile, StartTile, GoalTile
 from copy import deepcopy
 from board import Board
-
 
 class SpaceJamm:
     def __init__(self, filename: str, screen) -> None:
@@ -54,6 +54,8 @@ class SpaceJamm:
                 self.board = Board.decompress(state)
                 stack += list(self.movegen())
 
+            #self.blit_board()
+            #sleep(3)
             trail.append(state)
             covered_tiles.add(state)
         return trail
@@ -62,28 +64,61 @@ class SpaceJamm:
     def breadth_first_search(self):
         covered_tiles = set()
         start = self.board.compress()
-        queue = [start]
+        queue = deque()
         trail = []
         parent = {start: None}
         state = start
+        level = 0
+
+        queue.append((start, level))
 
         while not self.goaltest():
-            state = queue.pop(0)
+            state, level = queue.popleft()
+            level += 1
             if state in covered_tiles:
                 continue
-            else:
-                self.board = Board.decompress(state)
-                children = list(self.movegen())
-                for child in children:
-                    if child not in covered_tiles:
-                        parent[child] = state
-
-                queue += children
-
-                covered_tiles.add(state)
+            self.board = Board.decompress(state)
+            for child in self.movegen():
+                if (child, level) not in covered_tiles:
+                    parent[(child,level)] = state
+                    queue.append((child, level))
+            covered_tiles.add(state)
 
         while state:
+            level -= 1
             trail.append(state)
-            state = parent[state]
+            if not level: break
+            state = parent[(state, level)]
+
+        return trail[::-1]
+
+    def best_first_search(self):
+        covered_tiles = set()
+        start = self.board.compress()
+        queue = deque()
+        trail = []
+        parent = {start: None}
+        state = start
+        level = 0
+
+        queue.append((start, level))
+
+        while not self.goaltest():
+            state, level = queue.popleft()
+            level += 1
+            if state in covered_tiles:
+                continue
+            self.board = Board.decompress(state)
+            for child in self.movegen():
+                if (child, level) not in covered_tiles:
+                    parent[(child,level)] = state
+                    queue.append((child, level))
+            covered_tiles.add(state)
+
+        while state:
+            level -= 1
+            trail.append(state)
+            if not level: break
+            state = parent[(state, level)]
 
         return trail[::-1]

@@ -13,6 +13,7 @@ class Obstacle(a.GameObject):
         self.y = y
         self.size = abs(size)
         self.is_vertical = is_vertical
+        self.collided = False
         if uid == None:
             self.uid = Obstacle.obstacles_manufactured = (
                 Obstacle.obstacles_manufactured + 1
@@ -91,14 +92,22 @@ class Obstacle(a.GameObject):
             self.hitbox.add((x, y))
 
     def get_possible_moves(self, board_size: int) -> List[Tuple[int, int]]:
-        moves = []
-        for i in range(board_size - self.size + 1):
-            if i + self.size > board_size:
-                break
-            x = i * int(not self.is_vertical) + self.x * int(self.is_vertical)
-            y = i * int(self.is_vertical) + self.y * int(not self.is_vertical)
-            moves.append((x, y))
-        return moves
+        start = self.x * int(not self.is_vertical) + self.y * int(self.is_vertical)
+        other = self.y * int(not self.is_vertical) + self.x * int(self.is_vertical)
+        for curr_start in range(start, board_size - self.size + 1):
+            if self.collided: break
+            ret = (curr_start, other) if not self.is_vertical else (other, curr_start)
+            yield ret
+        self.collided = False
+
+        for curr_start in range(start, -1, -1):
+            if self.collided: break
+            ret = (curr_start, other) if not self.is_vertical else (other, curr_start)
+            yield ret
+
+            #x = i * int(not self.is_vertical) + self.x * int(self.is_vertical)
+            #y = i * int(self.is_vertical) + self.y * int(not self.is_vertical)
+        self.collided = False
 
     def get_blitables(self):
         return self.sprite, self.blit_coordinates

@@ -131,8 +131,11 @@ class Board(a.GameObject):
 
     def movegen(self):
         compressed = self.compress()
+        collided = False
         for i, obstacle in enumerate(self.obstacles):
+            obstacle.collided = False
             for move in obstacle.get_possible_moves(self.size):
+                obstacle.collided = False
                 if move == (obstacle.x, obstacle.y):
                     continue
                 obstacle_set = {
@@ -146,9 +149,10 @@ class Board(a.GameObject):
                     continue
                 if self.goal_tile.compress() in obstacle_set:
                     continue
-                if u.collisions(
+                obstacle.collided = u.collisions(
                     obstacle_set, self.obstacles[:i] + self.obstacles[i + 1 :]
-                ):
+                )
+                if obstacle.collided:
                     continue
                 state = u.insert_state(compressed, obstacle.compress(), move)
                 yield state
