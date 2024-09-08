@@ -40,7 +40,7 @@ class SpaceJamm:
         for state in trail:
             self.board = Board.decompress(state)
             self.blit_board()
-            sleep(0.3)
+            sleep(0.25)
 
         sleep(5)
         return
@@ -97,7 +97,7 @@ class SpaceJamm:
         while state:
             level -= 1
             trail.append(state)
-            if not level: break
+            if level < 1: break
             state = parent[(state, level)]
 
         return trail[::-1], stats
@@ -113,6 +113,7 @@ class SpaceJamm:
         parent = {start: None}
         state = start
         level = 0
+        stats = []
 
         value = (start, level)
         queue.put((heuristic(*value), value))
@@ -123,17 +124,20 @@ class SpaceJamm:
             if state in covered_tiles:
                 continue
             self.board = Board.decompress(state)
+            num = 0
             for child in self.movegen():
                 value = (child, level)
                 if value not in covered_tiles:
                     parent[value] = state
                     queue.put((heuristic(*value), value))
+                    num += 1
             covered_tiles.add(state)
+            u.track(stats, level, num)
 
         while state:
             level -= 1
             trail.append(state)
-            if not level: break
+            if level < 1: break
             state = parent[(state, level)]
 
-        return trail[::-1]
+        return trail[::-1], stats

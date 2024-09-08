@@ -34,10 +34,21 @@ def simulate(game, trail=[]):
         if trail:
             game.animate(trail)
             break
-        sleep(5)
+        sleep(1)
 
     pygame.quit()
-    
+
+def show_stats(stats, time_taken):
+    u.console.print("[bold]STATISTICS[/bold]")
+    cumsum = 0
+    for depth, n_children in enumerate(stats):
+        u.console.print(f"[blue]At depth: {depth}[/blue], we computed [red]children: {n_children}[/red]")
+        cumsum += n_children
+    u.console.print(f"{'='*80}")
+    u.console.print(f"[bold][blue]Traversed depth: {depth}[/blue], we computed [red]children: {cumsum}[/red][/bold]")
+    u.console.print(f"{'='*80}")
+    u.console.print(f"[bold]TIME TAKEN: [green]{time_taken:.4f}[/green][/bold]")
+
 def main():
     args = get_parser().parse_args()
 
@@ -47,17 +58,16 @@ def main():
         
         match args.search:
             case "dfs":
-                trail = space_jam.depth_first_search()
+                trail, stats, time_taken = u.time_search(space_jam.depth_first_search)
             case "bfs":
-                trail = space_jam.breadth_first_search()
+                trail, stats, time_taken = u.time_search(space_jam.breadth_first_search)
             case "best":
-                trail = space_jam.best_first_search()
+                trail, stats, time_taken = u.time_search(space_jam.best_first_search)
             case _:
-                trail = space_jam.breadth_first_search()
+                trail, stats, time_taken = u.time_search(space_jam.best_first_search)
 
-        trail, stats, time_taken = u.time_search(space_jam, args.search)
-        print(f"{time_taken:.4f}")
         simulate(space_jam, trail)
+        show_stats(stats,time_taken)
     
     if args.mapgen:
         map_size, n_obs = args.mapgen
