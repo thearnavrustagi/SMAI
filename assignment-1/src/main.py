@@ -45,7 +45,7 @@ def main():
         screen = pygame.display.set_mode(c.GAME_SIZE)
         space_jam = SpaceJamm(args.path, screen)
         
-        trail, time_taken = u.time_search(space_jam, args.search)
+        trail, stats, time_taken = u.time_search(space_jam, args.search)
         print(f"{time_taken:.4f}")
         simulate(space_jam, trail)
     

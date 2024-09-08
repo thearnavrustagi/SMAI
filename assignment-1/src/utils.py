@@ -69,12 +69,14 @@ def time_search(game, search):
     start_time = time.time()
     match search:
         case "dfs":
-            trail = game.depth_first_search()
+            trail, stats = game.depth_first_search()
         case "bfs":
-            trail = game.breadth_first_search()
+            trail, stats = game.breadth_first_search()
         case _:
-            trail = game.breadth_first_search()
+            trail, stats = game.breadth_first_search()
     time_taken = time.time() - start_time
 
-    return trail, time_taken
+    return trail, stats, time_taken
 
+def track(stats, depth, children):
+    stats.append((depth, children))
