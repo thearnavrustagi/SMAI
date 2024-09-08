@@ -8,7 +8,7 @@ from board import Board
 from spacejamm import SpaceJamm
 import pygame_manager as pgm
 import constants as c
-
+import utils as u
 
 def get_parser() -> ArgumentParser:
     parser = ArgumentParser(
@@ -33,6 +33,7 @@ def simulate(game, trail=[]):
         game.blit_board()
         if trail:
             game.animate(trail)
+            break
         sleep(5)
 
     pygame.quit()
@@ -54,6 +55,8 @@ def main():
             case _:
                 trail = space_jam.breadth_first_search()
 
+        trail, stats, time_taken = u.time_search(space_jam, args.search)
+        print(f"{time_taken:.4f}")
         simulate(space_jam, trail)
     
     if args.mapgen:

@@ -2,6 +2,7 @@ from typing import Tuple, List, Any, Set
 from numpy.random import randint, normal
 from itertools import groupby
 import random
+import time
 
 import constants as c
 from rich.console import Console
@@ -69,3 +70,19 @@ def sum_commons(target: Set, obstacles: List["Obstacle"]) -> int:
     for obstacle in obstacles:
         commons += len(target & obstacle.hitbox)
     return commons
+    
+def time_search(game, search):
+    start_time = time.time()
+    match search:
+        case "dfs":
+            trail, stats = game.depth_first_search()
+        case "bfs":
+            trail, stats = game.breadth_first_search()
+        case _:
+            trail, stats = game.breadth_first_search()
+    time_taken = time.time() - start_time
+
+    return trail, stats, time_taken
+
+def track(stats, depth, children):
+    stats.append((depth, children))

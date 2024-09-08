@@ -40,28 +40,32 @@ class SpaceJamm:
         for state in trail:
             self.board = Board.decompress(state)
             self.blit_board()
-            sleep(1)
+            sleep(0.3)
 
         sleep(5)
-        exit(0)
+        return
 
     def depth_first_search(self):
         covered_tiles = set()
         stack = [self.board.compress()]
         trail = []
+        stats = []
+        level = 0
+
         while not self.goaltest():
             state = stack.pop()
+            level += 1
             if state in covered_tiles:
                 continue
             else:
                 self.board = Board.decompress(state)
-                stack += list(self.movegen())
+                children = list(self.movegen())
+                u.track(stats, level, len(children))
+                stack += children
 
-            #self.blit_board()
-            #sleep(3)
             trail.append(state)
             covered_tiles.add(state)
-        return trail
+        return trail, stats
 
     
     def breadth_first_search(self):
@@ -69,6 +73,7 @@ class SpaceJamm:
         start = self.board.compress()
         queue = deque()
         trail = []
+        stats = []
         parent = {start: None}
         state = start
         level = 0
@@ -81,10 +86,12 @@ class SpaceJamm:
             if state in covered_tiles:
                 continue
             self.board = Board.decompress(state)
+            prior_state = len(queue)
             for child in self.movegen():
                 if (child, level) not in covered_tiles:
                     parent[(child,level)] = state
                     queue.append((child, level))
+            u.track(stats, level, len(queue) - prior_state)
             covered_tiles.add(state)
 
         while state:
@@ -93,7 +100,7 @@ class SpaceJamm:
             if not level: break
             state = parent[(state, level)]
 
-        return trail[::-1]
+        return trail[::-1], stats
 
     def best_first_search(self, heuristic:Callable=jamm_heuristic) -> List[Tuple[any]]:
         """
