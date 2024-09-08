@@ -37,10 +37,10 @@ class SpaceJamm:
         for state in trail:
             self.board = Board.decompress(state)
             self.blit_board()
-            sleep(1)
+            sleep(0.3)
 
         sleep(5)
-        exit(0)
+        return
 
     def depth_first_search(self):
         covered_tiles = set()
@@ -54,8 +54,6 @@ class SpaceJamm:
                 self.board = Board.decompress(state)
                 stack += list(self.movegen())
 
-            #self.blit_board()
-            #sleep(3)
             trail.append(state)
             covered_tiles.add(state)
         return trail

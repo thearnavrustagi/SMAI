@@ -2,6 +2,7 @@ from typing import Tuple, List
 from numpy.random import randint, normal
 from itertools import groupby
 import random
+import time
 
 import constants as c
 from rich.console import Console
@@ -63,3 +64,17 @@ def obstacle_gen(map_size, n_obs, start_row, board):
             available -= temp.hitbox
             n_obs -= 1
     return board.obstacles
+
+def time_search(game, search):
+    start_time = time.time()
+    match search:
+        case "dfs":
+            trail = game.depth_first_search()
+        case "bfs":
+            trail = game.breadth_first_search()
+        case _:
+            trail = game.breadth_first_search()
+    time_taken = time.time() - start_time
+
+    return trail, time_taken
+
