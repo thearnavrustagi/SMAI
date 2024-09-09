@@ -22,6 +22,7 @@ class Board(a.GameObject):
 
         self.size = -1
         self.start_tile, self.goal_tile = None, None
+        self.blocked = 0
         self.obstacles = []
 
     @staticmethod
@@ -51,6 +52,7 @@ class Board(a.GameObject):
         board.initialize_primary_tiles(lines[1], lines[2])
         board.initialize_obstacles(lines[3:])
 
+        board.blocked = board.get_blocked_tiles()
         return board
 
     @staticmethod
@@ -92,6 +94,9 @@ class Board(a.GameObject):
         compressed = [self.size, self.start_tile.compress(), self.goal_tile.compress()]
         for obstacle in self.obstacles:
             compressed.append(obstacle.compress())
+        
+        self.blocked = self.get_blocked_tiles()
+        compressed.append(self.blocked)
         return tuple(compressed)
 
     @staticmethod
@@ -101,23 +106,26 @@ class Board(a.GameObject):
         board.initialize_primary_tiles(data[1], data[2])
         board.obstacles = []
 
-        for obstacle in data[3:]:
+        for obstacle in data[3:-1]:
             board.obstacles.append(Obstacle.decompress(obstacle))
+        
+        board.blocked = data[-1]
 
         return board
 
     def get_blocked_tiles(self):
         tiles = None
-        if self.start_tile.x == self.goal_tile.x:
-            x = self.start_tile.x
-            Y1, Y2 = self.start_tile.y, self.goal_tile.y + 1
-            tiles = set(((x,y) for y in range(Y1, Y2, 1 if Y2 > Y1 else -1)))
-        elif self.start_tile.y == self.goal_tile.y:
-            y = self.start_tile.y
-            X1, X2 = self.start_tile.x, self.goal_tile.x + 1
-            tiles = set(((x,y) for x in range(X1, X2, 1 if X2 > X1 else -1)))
-        else:
-            return -1
+        # if self.start_tile.x == self.goal_tile.x:
+        #     x = self.start_tile.x
+        #     Y1, Y2 = self.start_tile.y, self.goal_tile.y + 1
+        #     tiles = set(((x,y) for y in range(Y1, Y2, 1 if Y2 > Y1 else -1)))
+        tiles = set((x,self.goal_tile.y) for x in range(self.size))
+        # if self.start_tile.y == self.goal_tile.y:
+        #     y = self.start_tile.y
+        #     X1, X2 = self.start_tile.x, self.goal_tile.x + 1
+        #     tiles = set(((x,y) for x in range(X1, X2, 1 if X2 > X1 else -1)))
+        # else:
+        #     return -1
         return u.sum_commons(tiles, self.obstacles)
 
     def get_blitables(self):

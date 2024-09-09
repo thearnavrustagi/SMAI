@@ -42,12 +42,27 @@ def show_stats(stats, time_taken):
     u.console.print("[bold]STATISTICS[/bold]")
     cumsum = 0
     for depth, n_children in enumerate(stats):
-        u.console.print(f"[blue]At depth: {depth}[/blue], we computed [red]children: {n_children}[/red]")
+        u.console.print(f"[blue]At depth: {depth}[/blue], [red]{n_children}[/red] children computed")
         cumsum += n_children
     u.console.print(f"{'='*80}")
-    u.console.print(f"[bold][blue]Traversed depth: {depth}[/blue], we computed [red]children: {cumsum}[/red][/bold]")
+    u.console.print(f"[bold][blue]Traversed depth: {depth}[/blue], [red]{cumsum}[/red] children computed[/bold]")
     u.console.print(f"{'='*80}")
     u.console.print(f"[bold]TIME TAKEN: [green]{time_taken:.4f}[/green][/bold]")
+
+def display(path):
+    config = json.load(open("pygame_config.json"))
+
+    screen = pygame.display.set_mode(c.GAME_SIZE)
+    while config["running"]:
+        space_jam = SpaceJamm(path, screen)
+        
+        for event in pygame.event.get():
+            pgm.handle_events(event, config)
+
+        space_jam.blit_board()
+        sleep(1)
+
+    pygame.quit()
 
 def main():
     args = get_parser().parse_args()
@@ -66,8 +81,8 @@ def main():
             case _:
                 trail, stats, time_taken = u.time_search(space_jam.best_first_search)
 
-        simulate(space_jam, trail)
         show_stats(stats,time_taken)
+        simulate(space_jam, trail)
     
     if args.mapgen:
         map_size, n_obs = args.mapgen
@@ -78,10 +93,8 @@ def main():
         print(board.dump(m))
 
     if args.disp and os.path.exists(str(args.path)):
-        screen = pygame.display.set_mode(c.GAME_SIZE)
-        space_jam = SpaceJamm(args.path, screen)
+        display(args.path)
 
-        simulate(space_jam)
     elif args.disp:
         screen = pygame.display.set_mode(c.GAME_SIZE)
         space_jam = SpaceJamm("../maps/test_map.txt", screen)

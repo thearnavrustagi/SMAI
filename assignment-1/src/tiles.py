@@ -11,6 +11,7 @@ class Tile(object):
         self.sprite = pygame.transform.scale_by(
             pygame.image.load("../assets/grid.png"), c.FACTOR
         )
+        self.occupied = False
 
     def __repr__(self):
         return f"{type(self).__name__}({self.x}, {self.y}, {self.occupied})"

@@ -37,10 +37,13 @@ class SpaceJamm:
             yield move
 
     def animate(self, trail):
+        self.board = Board.decompress(trail[0])
+        self.blit_board()
         for state in trail:
             self.board = Board.decompress(state)
             self.blit_board()
-            sleep(0.25)
+            pygame.time.delay(300) 
+            # sleep(0.1)
 
         sleep(5)
         return
