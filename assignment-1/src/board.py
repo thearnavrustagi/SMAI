@@ -138,20 +138,7 @@ class Board(a.GameObject):
             yield obstacle.get_blitables()
 
     def goaltest(self):
-        moves = set()
-        if self.start_tile.x == self.goal_tile.x:
-            x = self.start_tile.x
-            Y1, Y2 = self.start_tile.y, self.goal_tile.y + 1
-            for y in range(Y1, Y2, 1 if Y2 > Y1 else -1):
-                moves.add((x, y))
-        elif self.start_tile.y == self.goal_tile.y:
-            y = self.start_tile.y
-            X1, X2 = self.start_tile.x, self.goal_tile.x + 1
-            for x in range(X1, X2, 1 if X2 > X1 else -1):
-                moves.add((x, y))
-        else:
-            return False
-        return not u.collisions(moves, self.obstacles)
+        return self.blocked == 0
 
     def movegen(self):
         compressed = self.compress()
