@@ -246,9 +246,6 @@ class Graph:
 
         return current - swapped
 
-<<<<<<< HEAD
-    def or_opt(self, tour):
-=======
     def is_valid_tour(self, tour):
         """
         Check if the given tour is valid.
@@ -277,38 +274,7 @@ class Graph:
                 return False, f"Invalid edge in tour: {tour[i]} to {tour[i+1]}"
 
         return True, "Valid Tour"
-    def or_opt(self, tour):
-        """
-        Perform Or-opt optimization on the given tour.
-        """
-        from time import time
 
-        start_time = time()
-
-        def better_tour(tour, new_tour):
-            new_cost, cost = self.calculate_tour_cost(
-                new_tour
-            ), self.calculate_tour_cost(tour)
-            # print(new_tour, new_cost,"<deciding>",tour, cost)
-            return new_tour[:] if cost > new_cost else tour[:], cost > new_cost
-
-        final_tour = tour[:]
-        improvement = True
-        while improvement:
-            # print(self.calculate_tour_cost(final_tour))
-            improvement = False
-            for i in range(2, len(tour)):
-                for j in range(1, i):
-                    for k in range(j):
-                        final_tour, potential_improvement = better_tour(
-                            final_tour, self.shift_segment(final_tour, i, j, k)
-                        )
-                        improvement = potential_improvement or improvement
-                        if time() - start_time > 200:
-                            return final_tour
-            break
-        return final_tour
-    
     def perturb(self, tour):
         tour = tour[:-1]
         new = tour[:len(tour)//4]
@@ -496,6 +462,38 @@ class Graph:
 
         return current - shifted
 
+    def perturb(self, tour):
+            """
+            Perturb the given tour using a Double-Bridge Move.
+            This move cuts the tour into 4 pieces and reassembles them in a different order.
+            
+            :param tour: The current tour to be perturbed
+            :return: A new perturbed tour
+            """
+            size = len(tour)
+            if size < 8:  # The tour is too small for a meaningful perturbation
+                return tour
+            
+            # Remove the last city if it's a repeat of the first
+            if tour[0] == tour[-1]:
+                tour = tour[:-1]
+                size -= 1
+            
+            # Select four cutting points
+            cut_points = sorted(random.sample(range(size), 4))
+            
+            # Reorder the tour segments
+            new_tour = (
+                tour[:cut_points[0]] +
+                tour[cut_points[2]:cut_points[3]] +
+                tour[cut_points[1]:cut_points[2]] +
+                tour[cut_points[0]:cut_points[1]] +
+                tour[cut_points[3]:]
+            )
+            
+            # Ensure the tour starts and ends with the same city
+            return new_tour + [new_tour[0]]
+
 def read_input() -> Graph:
     """
     Read input from standard input and create a Graph object.
@@ -517,6 +515,7 @@ def read_input() -> Graph:
     return graph
 
 
+
 def solve_tsp(graph: Graph) -> None:
     """
     Solve the TSP problem using both Christofides algorithm and optimal solver.
@@ -527,26 +526,55 @@ def solve_tsp(graph: Graph) -> None:
 
     start = time()
     tour = graph.christofides()
-    functions = [
-        graph.two_opt,
-        graph.or_opt,
-        graph.two_opt,
-        graph.or_opt,
-        graph.two_opt,
-        graph.lin_kernighan,
-        graph.two_opt,
-        graph.or_opt,
-        graph.two_opt,
-    ]
+    best_tour = tour
+    best_cost = graph.calculate_tour_cost(best_tour)
 
-    print(" ".join(map(str, tour[:-1])))
-    for func in functions:
-        tour = func(tour)
-        print(" ".join(map(str, tour[:-1])))
-        print("valid:", graph.is_valid_tour(tour))
-        print(graph.calculate_tour_cost(tour))
-        print("time:", time() - start)
-        print("")
+    start = time()
+    max_time = 250  # You can adjust this
+    no_improvement_limit = 20  # You can adjust this
+    no_improvement = 0
+    i = 0
+
+    while time() - start < max_time:
+        # Apply 2-opt
+        tour = graph.or_opt(graph.two_opt(tour))
+        
+        is_valid, message = graph.is_valid_tour(tour)
+        if not is_valid:
+            print(f"Invalid tour after 2-opt at iteration {i+1}: {message}")
+            tour = best_tour  # Revert to the last known valid tour
+            continue
+
+        # Check if we've found a new best tour
+        current_cost = graph.calculate_tour_cost(tour)
+        if current_cost < best_cost:
+            best_tour = tour
+            best_cost = current_cost
+            no_improvement = 0
+        else:
+            no_improvement += 1
+
+        # If no improvement for a while, perturb the tour
+        if no_improvement >= no_improvement_limit:
+            tour = graph.perturb(best_tour)
+            no_improvement = 0
+
+        is_valid, message = graph.is_valid_tour(tour)
+        print(f"Iteration {i+1}: {' '.join(map(str, tour[:-1]))}")
+        print(f"Cost: {current_cost}")
+        print(f"Valid tour: {is_valid}")
+        if not is_valid:
+            print(f"Validity message: {message}")
+        print(f"Time: {time() - start}")
+        print()
+        
+        i += 1
+
+    print("Best tour found:")
+    print(f"Valid Tour: {graph.is_valid_tour(tour)}")
+    print(' '.join(map(str, best_tour[:-1])))
+    print(f"Best cost: {best_cost}")
+    print(f"Total time: {time() - start}")
 
 def main() -> None:
     """
