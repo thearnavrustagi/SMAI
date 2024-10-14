@@ -3,6 +3,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import random
+import copy
 import sys
 from typing import List, Tuple
 from enum import Enum
@@ -333,6 +335,269 @@ class Graph:
             end = (end - 1 + len(tour)) % len(tour)
 
 
+    def lin_kernighan(self, tour):
+        """
+        Implement the Lin-Kernighan heuristic for tour improvement.
+        """
+        improved = True
+        while improved:
+            improved = False
+            for i in range(len(tour)):
+                for j in range(i + 2, len(tour)):
+                    if j - i == len(tour) - 1:
+                        continue
+                    new_tour = tour[:i+1] + tour[i+1:j+1][::-1] + tour[j+1:]
+                    valid, _ = self.is_valid_tour(new_tour)
+                    if  valid and self.calculate_tour_cost(new_tour) < self.calculate_tour_cost(tour):
+                        tour = new_tour
+                        improved = True
+                        break
+                if improved:
+                    break
+        return tour
+
+    def is_valid_tour(self, tour):
+        """
+        Check if the given tour is valid.
+        A valid tour must:
+        1. Contain all cities exactly once (except the first city, which appears twice - at the start and end)
+        2. Start and end with the same city
+        3. Only contain valid city indices
+        """
+        if len(tour) != self.num_cities + 1:
+            return False, "Tour length is incorrect"
+        
+        if tour[0] != tour[-1]:
+            return False, "Tour does not start and end with the same city"
+        
+        city_set = set(tour[:-1])  # Exclude the last city as it's a repeat of the first
+        
+        if len(city_set) != self.num_cities:
+            return False, "Tour does not visit all cities exactly once"
+        
+        if any(city < 0 or city >= self.num_cities for city in tour):
+            return False, "Tour contains invalid city indices"
+        
+        # Check if all edges in the tour exist in the graph
+        for i in range(len(tour) - 1):
+            if (tour[i], tour[i+1]) not in self.weights:
+                return False, f"Invalid edge in tour: {tour[i]} to {tour[i+1]}"
+        
+        return True, "Valid Tour"
+    
+    def new_three_opt(self, tour):
+        new_tour, new_cost = tour[:], -1
+        def better_tour (tour, new_tour): 
+            new_cost, cost = self.calculate_tour_cost(new_tour), self.calculate_tour_cost(tour)
+            #print(new_tour, new_cost,"<deciding>",tour, cost)
+            return new_tour[:] if cost > new_cost  else tour[:]
+
+        tour_cost = self.calculate_tour_cost(tour)
+        seen = set()
+        while new_cost < tour_cost:
+            #print("whiling away")
+            tour = new_tour
+            tour_cost = self.calculate_tour_cost(tour)
+            for i in range(1, len(tour)):
+                print("at i",i)
+                for j in range(i):
+                    new_tour = better_tour(self.swap(tour,i, j), new_tour)
+                    new_cost = self.calculate_tour_cost(new_tour)
+                print(self.calculate_tour_cost(better_tour(new_tour, tour)))
+        return better_tour(new_tour, tour)
+
+    def swap(self, tour, i, j):
+        def better_tour (tour, new_tour): 
+            new_cost, cost = self.calculate_tour_cost(new_tour), self.calculate_tour_cost(tour)
+            #print(new_tour, new_cost,":",tour, cost)
+            return new_tour[:] if cost > new_cost  else tour[:]
+        final_tour = tour[:]
+        def inner_function(tour, a,b,x,y):
+            new_tour = tour[:]
+            new_tour[a], new_tour[b] = new_tour[x], new_tour[y]
+            #print(tour, new_tour)
+            return better_tour(tour,new_tour)
+        A = itertools.permutations((i,j), 2)
+        perms = list(itertools.permutations(A, 2))
+        
+        for ((a,b), (x,y)) in perms:
+            final_tour = better_tour(final_tour, inner_function(tour, a,b, x, y))
+        #print("returning", final_tour, self.calculate_tour_cost(final_tour))
+        return final_tour
+        
+    def generate_initial_population(self, population_size):
+        """
+        Generate an initial population using Christofides and Lin-Kernighan.
+        """
+        population = []
+        for _ in range(population_size):
+            tour = self.christofides()
+            tour = self.lin_kernighan(tour)
+            population.append(tour)
+        return population
+
+    def crossover(self, parent1, parent2):
+        """
+        Perform ordered crossover (OX) between two parent tours.
+        """
+        size = len(parent1)
+        start, end = sorted(random.sample(range(size), 2))
+        child = [-1] * size
+        child[start:end] = parent1[start:end]
+        remaining = [item for item in parent2 if item not in child]
+        for i in range(size):
+            if child[i] == -1:
+                child[i] = remaining.pop(0)
+        return child
+
+    def mutate(self, tour):
+        """
+        Perform a simple swap mutation on the tour.
+        """
+        i, j = random.sample(range(len(tour)), 2)
+        tour[i], tour[j] = tour[j], tour[i]
+        return tour
+
+    def genetic_algorithm(self, population_size=50, generations=100, mutation_rate=0.1):
+        """
+        Implement the genetic algorithm for TSP.
+        """
+        population = self.generate_initial_population(population_size)
+        
+        for _ in range(generations):
+            # Evaluate fitness
+            fitness = [1 / self.calculate_tour_cost(tour) for tour in population]
+            
+            # Select parents
+            parents = random.choices(population, weights=fitness, k=population_size)
+            
+            # Create new population
+            new_population = []
+            for i in range(0, population_size, 2):
+                parent1, parent2 = parents[i], parents[i+1]
+                child1 = self.crossover(parent1, parent2)
+                child2 = self.crossover(parent2, parent1)
+                
+                # Mutation
+                if random.random() < mutation_rate:
+                    child1 = self.mutate(child1)
+                if random.random() < mutation_rate:
+                    child2 = self.mutate(child2)
+                
+                new_population.extend([child1, child2])
+            
+            # Apply Lin-Kernighan to the best individual
+            best_tour = min(new_population, key=self.calculate_tour_cost)
+            best_tour = self.lin_kernighan(best_tour)
+            
+            # Replace the worst individual with the improved best tour
+            worst_idx = max(range(len(new_population)), key=lambda i: self.calculate_tour_cost(new_population[i]))
+            new_population[worst_idx] = best_tour
+            
+            population = new_population
+        
+        return min(population, key=self.calculate_tour_cost)
+
+    def two_opt(self, tour):
+        """
+        Perform 2-opt optimization on the given tour.
+        """
+        improved = True
+        best_distance = self.calculate_tour_cost(tour)
+        while improved:
+            improved = False
+            for i in range(1, len(tour) - 2):
+                for j in range(i + 1, len(tour)):
+                    if j - i == 1:
+                        continue
+                    new_tour = tour[:i] + tour[i:j][::-1] + tour[j:]
+                    new_distance = self.calculate_tour_cost(new_tour)
+                    if new_distance < best_distance:
+                        tour = new_tour
+                        best_distance = new_distance
+                        improved = True
+            if improved:
+                break
+        return tour
+
+    def remove_crossovers(self, tour):
+        """
+        Remove edge intersections (crossovers) from the tour.
+        """
+        def ccw(A, B, C):
+            return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+        def intersect(A, B, C, D):
+            return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+        improved = True
+        while improved:
+            improved = False
+            for i, j in itertools.combinations(range(len(tour)), 2):
+                i_next = (i + 1) % len(tour)
+                j_next = (j + 1) % len(tour)
+                if i_next == j or j_next == i:
+                    continue
+                A = self.coordinates[tour[i]]
+                B = self.coordinates[tour[i_next]]
+                C = self.coordinates[tour[j]]
+                D = self.coordinates[tour[j_next]]
+                if intersect(A, B, C, D):
+                    tour[i_next:j+1] = reversed(tour[i_next:j+1])
+                    improved = True
+                    break
+        return tour
+    def or_opt(self, tour):
+        """
+        Perform Or-opt optimization on the given tour.
+        """
+        improved = True
+        while improved:
+            improved = False
+            for i in range(len(tour)):
+                for j in range(i + 2, min(i + 5, len(tour))):  # Try relocating 2-4 consecutive cities
+                    for k in range(len(tour)):
+                        if k >= i - 1 and k <= j:
+                            continue
+                        new_tour = tour[:i] + tour[j:j+1] + tour[i:j] + tour[j+1:]
+                        new_tour = new_tour[:k] + new_tour[i:j+1] + new_tour[k:]
+                        if self.calculate_tour_cost(new_tour) < self.calculate_tour_cost(tour):
+                            tour = new_tour
+                            improved = True
+                            break
+                    if improved:
+                        break
+                if improved:
+                    break
+        return tour
+
+def solve_tsp(graph: Graph) -> None:
+    print("Christofides Algorithm:")
+    christofides_tour = graph.christofides()
+    christofides_cost = graph.calculate_tour_cost(christofides_tour)
+    print(f"Tour: {' '.join(map(str, christofides_tour))}")
+    print(f"Cost: {christofides_cost}")
+    
+    print("\nGenetic Algorithm with Lin-Kernighan:")
+    genetic_tour = graph.new_three_opt(christofides_tour)#= graph.genetic_algorithm()
+    genetic_cost = graph.calculate_tour_cost(genetic_tour)
+    print(f"Tour: {' '.join(map(str, genetic_tour))}")
+    print(f"Cost: {genetic_cost}")
+
+    print("\n2-opt + no crossover")
+    no_crossover_tour = graph.or_opt(genetic_tour)
+    no_crossover_cost = graph.calculate_tour_cost(no_crossover_tour)
+    print(f"Tour: {' '.join(map(str, no_crossover_tour))}")
+    print(f"Cost: {no_crossover_cost}")
+
+
+    if graph.num_cities <= 10:
+        print("\nOptimal Tour:")
+        optimal_tour, optimal_cost = graph.get_optimal_tour()
+        print(f"Tour: {' '.join(map(str, optimal_tour))}")
+        print(f"Cost: {optimal_cost}")
+
+
 def read_input() -> Graph:
     """
     Read input from standard input and create a Graph object.
@@ -353,30 +618,6 @@ def read_input() -> Graph:
 
     return graph
 
-
-def solve_tsp(graph: Graph) -> None:
-    """
-    Solve the TSP problem using both Christofides algorithm and optimal solver.
-
-    :param graph: Graph object representing the TSP instance
-    """
-    print("Christofides Algorithm:")
-    christofides_tour = graph.christofides()
-    christofides_cost = graph.calculate_tour_cost(christofides_tour)
-    print(f"Tour: {' '.join(map(str, christofides_tour))}")
-    print(f"Cost: {christofides_cost}")
-    
-    print("\n3-opt Optimized")
-    three_opt_tour = graph.three_opt(christofides_tour)
-    three_opt_cost = graph.calculate_tour_cost(three_opt_tour)
-    print(f"Tour: {' '.join(map(str, three_opt_tour))}")
-    print(f"Cost: {three_opt_cost}")
-
-    if graph.num_cities <= 10:
-        print("\nOptimal Tour:")
-        optimal_tour, optimal_cost = graph.get_optimal_tour()
-        print(f"Tour: {' '.join(map(str, optimal_tour))}")
-        print(f"Cost: {optimal_cost}")
 
 def main() -> None:
     """
