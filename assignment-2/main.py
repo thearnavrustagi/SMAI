@@ -1,3 +1,5 @@
+import time
+from copy import deepcopy
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -246,6 +248,73 @@ class Graph:
 
         return current - swapped
 
+    def or_opt(self, tour):
+        N = len(tour)
+        locally_optimal = False
+
+        while not locally_optimal:
+            locally_optimal = True
+
+            for segment_len in range(3, 0, -1):
+                for pos in range(N):
+                    i = pos
+                    X1 = tour[i]
+                    X2 = tour[(i + 1) % N]
+                    
+                    j = (i + segment_len) % N
+                    Y1 = tour[j]
+                    Y2 = tour[(j + 1) % N]
+
+                    for shift in range(segment_len + 1, N):
+                        k = (i + shift) % N
+                        Z1 = tour[k]
+                        Z2 = tour[(k + 1) % N]
+
+                        if self.seg_shift_gain(X1, X2, Y1, Y2, Z1, Z2) > 0:
+                            logger.info(f"Tour before shift: {tour}")
+                            logger.info(f"i, j, k: {i}, {j}, {k}")
+                            logger.info(f"seg len: {segment_len}")
+                            self.shift_seg(tour, i, j, k)
+                            logger.info(f"Tour after shift: {tour}")
+                            locally_optimal = False
+                            break  # Exit the innermost loop
+                    
+                    if not locally_optimal:
+                        break  # Exit the middle loop
+                
+                if not locally_optimal:
+                    break  # Exit the outer loop
+
+        return tour
+
+    def shift_seg(self, tour, i, j, k):
+        N = len(tour)
+        segment_size = (j - i + N) % N
+        logger.info(f"segment_size: {segment_size}")
+        shift_size = ((k - i + N) - segment_size + N) % N
+        offset = (i + 1 + shift_size)
+
+        # Make a copy of the segment before shift
+        segment = [tour[(i + 1 + counter) % N] for counter in range(segment_size)]
+
+        # Shift to the left by segment_size all cities between old position
+        # of right end of the segment and new position of its left end
+        pos = (i + 1) % N
+        for _ in range(shift_size):
+            tour[pos] = tour[(pos + segment_size) % N]
+            pos = (pos + 1) % N
+
+        # Put the copy of the segment into its new place in the tour
+        for pos in range(segment_size):
+            tour[(offset + pos) % N] = segment[pos]
+
+    def seg_shift_gain(self, x1, x2, y1, y2, z1, z2):
+        current = self.distance(x1, x2) + self.distance(y1, y2) + self.distance(z1, z2)
+        shifted = self.distance(x1, y2) + self.distance(y1, z2) + self.distance(z1, x2)
+
+        return current - shifted
+
+
 def read_input() -> Graph:
     """
     Read input from standard input and create a Graph object.
@@ -279,11 +348,23 @@ def solve_tsp(graph: Graph) -> None:
     print(f"Tour: {' '.join(map(str, christofides_tour))}")
     print(f"Cost: {christofides_cost}")
     
-    print("\n2-opt Optimized")
-    two_opt_tour = graph.two_opt(christofides_tour)
+    print("\n2-opt Optimized Christofides")
+    two_opt_tour = graph.two_opt(deepcopy(christofides_tour))
     two_opt_cost = graph.calculate_tour_cost(two_opt_tour)
     print(f"Tour: {' '.join(map(str, two_opt_tour))}")
     print(f"Cost: {two_opt_cost}")
+    
+    print("\nOr-opt Optimized Christofides")
+    or_opt_tour = graph.or_opt(deepcopy(two_opt_tour))
+    or_opt_cost = graph.calculate_tour_cost(or_opt_tour)
+    print(f"Tour: {' '.join(map(str, or_opt_tour))}")
+    print(f"Cost: {or_opt_cost}")
+    
+    # print("\n3-opt Optimized Christofides")
+    # three_opt_tour = graph.three_opt(deepcopy(christofides_tour))
+    # three_opt_cost = graph.calculate_tour_cost(three_opt_tour)
+    # print(f"Tour: {' '.join(map(str, three_opt_tour))}")
+    # print(f"Cost: {three_opt_cost}")
 
     if graph.num_cities <= 10:
         print("\nOptimal Tour:")
