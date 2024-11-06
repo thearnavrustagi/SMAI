@@ -5,16 +5,18 @@ import random
 import math
 import itertools
 
+
 def find_parent(parent, i):
     if parent[i] != i:
         parent[i] = find_parent(parent, parent[i])
     return parent[i]
 
+
 def union_find(parent, rank, x, y):
     """
     Attach a lower rank tree under the root of a higher rank tree
 
-    :param parent: 
+    :param parent:
     """
     if rank[x] < rank[y]:
         parent[x] = y
@@ -28,6 +30,7 @@ def union_find(parent, rank, x, y):
 class GraphType(Enum):
     EUCLIDEAN = "EUCLIDEAN"
     NON_EUCLIDEAN = "NON_EUCLIDEAN"
+
 
 class Graph:
     def __init__(self, graph_type: GraphType, num_cities: int):
@@ -47,12 +50,13 @@ class Graph:
 
     def add_weight(self, u: int, weights: List[float]) -> None:
         for v, w in enumerate(weights):
-            if w == v: continue
+            if w == v:
+                continue
             self.weights[(u, v)] = w
 
     def kruskal_mst(self):
         mst = []
-        parents, rank = list(range(self.num_cities)), [0]*self.num_cities
+        parents, rank = list(range(self.num_cities)), [0] * self.num_cities
 
         itr = 0
         edges = 0
@@ -75,77 +79,86 @@ class Graph:
     def christofides(self):
         # Step 1: Create a minimum spanning tree
         mst = self.kruskal_mst()
-        
+
         # Step 2: Find odd-degree vertices
         degree = [0] * self.num_cities
         for edge in mst:
             degree[edge[0]] += 1
             degree[edge[1]] += 1
         odd_vertices = [i for i in range(self.num_cities) if degree[i] % 2 != 0]
-        
+
         # Step 3: Find minimum-weight perfect matching (greedy approach)
         matching = self.greedy_matching(odd_vertices)
-        
+
         # Step 4: Combine MST and matching
         eulerian_graph = mst + matching
-        
+
         # Step 5: Find Eulerian circuit
         euler_circuit = self.find_eulerian_circuit(eulerian_graph)
-        
+
         # Step 6: Make Hamiltonian circuit
         hamiltonian_circuit = self.make_hamiltonian(euler_circuit)
-        
+
         return hamiltonian_circuit
 
     def greedy_matching(self, odd_vertices):
         matching = []
         unmatched = odd_vertices.copy()
-        
+
         while unmatched:
             v = unmatched.pop(0)
-            closest = min(unmatched, key=lambda u: self.weights.get((v, u), float('inf')))
+            closest = min(
+                unmatched, key=lambda u: self.weights.get((v, u), float("inf"))
+            )
             matching.append([v, closest, self.weights.get((v, closest))])
             unmatched.remove(closest)
-        
+
         return matching
+
     def get_optimal_tour(self):
         """
         Find the optimal tour using the Held-Karp algorithm (dynamic programming).
-        
+
         :return: Tuple containing the optimal tour and its cost
         """
         n = self.num_cities
-        
+
         # Initialize the DP table
         dp = {}
-        
+
         # Base case: start from city 0 to each other city
         for i in range(1, n):
-            dp[(1 << i, i)] = (self.weights.get((0, i), float('inf')), [0, i])
-        
+            dp[(1 << i, i)] = (self.weights.get((0, i), float("inf")), [0, i])
+
         # Iterate over all subsets of cities
         for size in range(2, n):
             for subset in itertools.combinations(range(1, n), size):
                 bits = 0
                 for bit in subset:
                     bits |= 1 << bit
-                
+
                 for last in subset:
                     prev = bits & ~(1 << last)
                     res = []
                     for j in subset:
                         if j == last:
                             continue
-                        res.append((dp[(prev, j)][0] + self.weights.get((j, last), float('inf')), j))
+                        res.append(
+                            (
+                                dp[(prev, j)][0]
+                                + self.weights.get((j, last), float("inf")),
+                                j,
+                            )
+                        )
                     dp[(bits, last)] = min(res)
-        
+
         # Find the optimal tour
         bits = (2**n - 1) - 1  # All bits set except the 0th city
         res = []
         for i in range(1, n):
-            res.append((dp[(bits, i)][0] + self.weights.get((i, 0), float('inf')), i))
+            res.append((dp[(bits, i)][0] + self.weights.get((i, 0), float("inf")), i))
         opt, parent = min(res)
-        
+
         # Reconstruct the path
         path = [0]
         for i in range(n - 1):
@@ -154,9 +167,8 @@ class Graph:
             _, parent = dp[(bits, parent)]
             bits = new_bits
         path.append(0)
-        
-        return path, opt
 
+        return path, opt
 
     def find_eulerian_circuit(self, graph):
         # Create an adjacency list
@@ -164,7 +176,7 @@ class Graph:
         for edge in graph:
             adj_list[edge[0]].append(edge[1])
             adj_list[edge[1]].append(edge[0])
-        
+
         # Find Eulerian circuit
         circuit = []
         stack = [0]  # Start from vertex 0
@@ -176,7 +188,7 @@ class Graph:
                 adj_list[u].remove(v)
             else:
                 circuit.append(stack.pop())
-        
+
         return circuit[::-1]
 
     def make_hamiltonian(self, circuit):
@@ -192,8 +204,9 @@ class Graph:
     def calculate_tour_cost(self, tour):
         cost = 0
         for i in range(len(tour) - 1):
-            cost += self.weights.get((tour[i], tour[i+1]), float('inf'))
+            cost += self.weights.get((tour[i], tour[i + 1]), float("inf"))
         return cost
+
 
 def read_input() -> Graph:
     """
@@ -224,7 +237,8 @@ def solve_tsp(graph: Graph) -> None:
     """
     christofides_tour = graph.christofides()
     christofides_cost = graph.calculate_tour_cost(christofides_tour)
-    print(' '.join(map(str, christofides_tour)))
+    print(" ".join(map(str, christofides_tour)))
+
 
 def main() -> None:
     """
@@ -233,6 +247,7 @@ def main() -> None:
     print("Arnav Rustagi U20220021\nMukundan Gurumurthy U20220056")
     graph = read_input()
     solve_tsp(graph)
+
 
 if __name__ == "__main__":
     main()
