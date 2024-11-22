@@ -1,0 +1,527 @@
+#ifndef BOTLOADER_H
+#define BOTLOADER_H
+
+/**
+ * @brief BotLoader Loads a bot
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-01-27
+ */
+
+#include "Othello.h"
+#include "OthelloPlayer.h"
+
+using namespace Desdemona;
+
+void loadInit();
+OthelloPlayer* loadBot( string botPath, Turn turn );
+
+#endif /* #ifndef BOTLOADER_H */
+#ifndef HUMANPLAYER_H
+#define HUMANPLAYER_H
+
+#endif /* #ifndef HUMANPLAYER_H */
+#ifndef LOGGEDOTHELLOGAME_H
+#define LOGGEDOTHELLOGAME_H
+
+/**
+ * @brief LoggedOthelloGame Logs to a file
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-01-27
+ */
+
+#include "OthelloGame.h"
+#include <string>
+#include <fstream>
+using namespace std;
+
+namespace Desdemona
+{
+    class LoggedOthelloGame: public OthelloGame
+    {
+        public:
+
+            /**
+             * Open stream to log file
+             */
+            LoggedOthelloGame( string logfile, OthelloPlayer& player1, OthelloPlayer& player2 );
+
+            /**
+             * Close log file
+             */
+            ~LoggedOthelloGame();
+        protected:
+            fstream log;
+
+            /**
+             * Log moves to log file
+             */
+            void postPlayActions( Move& move );
+    };
+}
+
+#endif /* #ifndef LOGGEDOTHELLOGAME_H */
+#ifndef OTHELLO_H
+#define OTHELLO_H
+
+/**
+ * @brief Common Othello primitives
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-01-27
+ */
+
+#include <iostream>
+#include <cstring>
+using namespace std;
+
+namespace Desdemona
+{
+    enum Mode
+    {
+        NORMAL=0,
+        REPLAY=1,
+        TEST=2
+    };
+
+    struct Options
+    {
+        Mode mode;
+        bool isVerbose;
+        bool shouldStep;
+        bool ignoreTime;
+
+        Options()
+        {
+            mode = NORMAL;
+            isVerbose = false;
+        }
+
+    };
+
+    enum Coin
+    {
+        EMPTY,
+        BLACK,
+        RED
+    };
+
+    typedef Coin Turn;
+    Turn inline other( Turn& turn )
+    {
+        switch( turn )
+        {
+            case BLACK:
+                return RED;
+            case RED:
+                return BLACK;
+            default:
+                return EMPTY;
+        }
+    }
+
+    class Move
+    {
+        public:
+            int x;
+            int y;
+
+            /**
+             * Default constructor
+             *
+             * @param x - X Coordinate
+             * @param y - Y Coordinate
+             */
+            Move( int x, int y ): x(x), y(y) {}
+
+            /**
+             * Equality
+             *
+             * @param other - 
+             */
+            bool operator==( const Move other ) const;
+
+            static Move empty()
+            {
+                return Move( 0, 0 );
+            }
+
+            static const Move pass()
+            {
+                return Move( -1, -1 );
+            }
+
+            static Move parse( string moveStr )
+            {
+                int x;
+                int y;
+
+                if( moveStr.length() == 1 && moveStr[0] == 'p' )
+                {
+                    return Move::pass();
+                }
+                else if( moveStr.length() == 2 )
+                {
+                    x = moveStr[0] - 'a';
+                    y = moveStr[1] - '0';
+
+                    return Move( x, y );
+                }
+                else
+                {
+                    throw exception();
+                }
+            }
+
+            /**
+             * Input from a stream
+             *
+             * @param inp - Input stream
+             * @param move - Move taking input
+             */
+            friend istream& operator>>( istream& inp, Move& move );
+
+            /**
+             * Output to a stream
+             *
+             * @param out - Output stream
+             * @param move - Move to be outputed
+             */
+            friend ostream& operator<<( ostream& out, const Move& move );
+    };
+
+    /**
+     * \class MoveCmp
+     * Required for maps
+     */
+    class MoveCmp
+    {
+        public:
+            bool operator()(const Move& move, const Move& move_)
+            {
+                if (move.x == move_.x)
+                    return move.y < move_.y;
+                else
+                    return move.x < move_.x;
+            }
+    };
+}
+
+#endif /* #ifndef OTHELLO_H */
+
+#ifndef OTHELLOBOARD_H
+#define OTHELLOBOARD_H
+
+/**
+ * @brief OthelloBoard Class for the Othello board 
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-01-27
+ */
+
+#include <exception>
+#include <string>
+#include <cstdlib>
+#include <cstdio>
+#include <list>
+using namespace std;
+
+#include "Othello.h"
+
+namespace Desdemona
+{
+    typedef Turn Coin;
+
+    class OthelloBoard
+    {
+        static const int BOARD_SIZE = 8;
+        /**
+         * Function to check if position is within the board
+         */
+        static bool inline validPosition( int x, int y );
+
+        public:
+
+        /**
+         * Default constructor
+         */
+        OthelloBoard();
+
+        /**
+         * Destructor
+         */
+        virtual ~OthelloBoard();
+
+        /**
+         * Copy constructor
+         * @param other Reference on object to copy.
+         */
+        OthelloBoard( const OthelloBoard& other );
+
+        /** 
+         * Assignment operator
+         * @param other Reference on object to copy.
+         * @return Reference on initialisated object.
+         */
+        OthelloBoard& operator=( const OthelloBoard& other );
+
+        /**
+         * Checks if a move on the board is valid
+         * @param turn Color of piece to be played
+         * @param x X coordinate
+         * @param y Y coordinate
+         */
+        bool validateMove( Turn turn, int x, int y ) const;
+
+        /**
+         * Checks if a move on the board is valid
+         * @param turn Color of piece to be played
+         * @param move X,Y coordinates
+         */ 
+        bool validateMove( Turn turn, Move move ) const;
+
+        /**
+         * Applies a move on the board
+         * @param turn Color of piece to be played
+         * @param x X coordinate
+         * @param y Y coordinate
+         */
+        void makeMove( Turn turn, int x, int y );
+
+        /**
+         * Applies a move on the board
+         * @param turn Color of piece to be played
+         * @param move Move data structure
+         */
+        void makeMove( Turn turn, Move move );
+
+        /**
+         * Gets all valid moves that can be made by a particular turn
+         * @param turn Color of piece to be played
+         *
+         * @return List of all valid moves
+         */
+        list<Move> getValidMoves( Turn turn ) const;
+
+        /**
+         * Get a count of number of reds
+         */
+        int getRedCount() const;
+
+        /**
+         * Get a count of number of blacks
+         */
+        int getBlackCount() const;
+
+        /**
+         * Prints board on console
+         * Can be overridden to replace output format
+         * @param turn - Prints out some indicator of whose turn it is
+         */
+        virtual void print( Turn turn ) const;
+
+        /**
+         * Prints board on console
+         * Can be overridden to replace output format
+         */
+        virtual void print() const;
+
+        inline Coin get(int x, int y) const
+        {
+            return board[x][y];
+        }
+
+        private:
+        /**
+         * Internal storage for the positions
+         */
+        Coin board[BOARD_SIZE][BOARD_SIZE];
+        /**
+         * Count of black coins. Present to help player writers
+         */
+        int blackCount;
+        /**
+         * Count of red coins. Present to help player writers
+         */
+        int redCount;
+
+        /**
+         * Allow players to inspect the board
+         */
+        friend class OthelloPlayer;
+    };
+
+    class InvalidMoveException: public exception
+    {
+        public:
+        Move move;
+
+        InvalidMoveException( const Move& move ): move(move) 
+        {
+            if( move == Move::pass() )
+            {
+                expl = "Invalid Move(pass)";
+            }
+            else
+            {
+                char posID[3];
+                posID[0] = (char) ('a'+move.x);
+                posID[1] = (char) ('0'+move.y);
+                posID[2] = '\0';
+
+                expl = "Invalid Move(" + string(posID) + ")";
+            }
+        }
+
+        ~InvalidMoveException() throw() {}
+
+        const char* what() const throw ()
+        {
+            return expl.c_str();
+        }
+
+        private:
+            string expl;
+    };
+}
+
+#endif /* #ifndef OTHELLOBOARD_H */
+#ifndef OTHELLOGAME_H
+#define OTHELLOGAME_H
+
+/**
+ * @brief OthelloGame Stores the current state of a game
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-01-27
+ */
+
+#include "OthelloPlayer.h"
+#include "Othello.h"
+#include <string>
+using namespace std;
+
+namespace Desdemona
+{
+    class OthelloGame
+    {
+        public:
+
+            /**
+             * Start a game with two players
+             */
+            OthelloGame( OthelloPlayer& player1, OthelloPlayer& player2 );
+
+            Turn getTurn();
+            bool validateMove( const Move& move );
+            void makeMove( const Move& move );
+
+            void printState();
+            /**
+             * Play a game
+             * @return - Red Count - Black Count
+             */
+            pair<int,int> startGame();
+            int replayGame( string filename );
+
+        protected:
+            OthelloPlayer& player1;
+            OthelloPlayer& player2;
+            OthelloBoard board;
+            Turn turn;
+
+            /**
+             * Allows inheriters to define actions that should be performed
+             * after a move is played.
+             */
+            virtual void postPlayActions( Move& move );
+
+            bool isGameOver( );
+    };
+
+    class TimeoutException: public exception
+    {
+        public:
+            const OthelloPlayer& player;
+		int red, black;
+            TimeoutException( const OthelloPlayer& player, int a, int b ) throw():
+                player( player ) {
+			black = a;
+			red = b;
+		}
+            ~TimeoutException() throw() {}
+
+            const char* what() 
+            {
+                return "Player timed out";
+            }
+    };
+
+    class BotInvalidMoveException: public InvalidMoveException
+    {
+        public:
+            const OthelloPlayer& player;
+		int red, black;
+
+            BotInvalidMoveException( const OthelloPlayer& player, const Move& move, int a, int b ) throw():
+                InvalidMoveException( move ), player( player ) {
+			black = a;
+			red = b;
+		}
+            ~BotInvalidMoveException() throw() {}
+
+            const char* what() 
+            {
+                return "Player timed out";
+            }
+    };
+
+}
+
+#endif /* #ifndef OTHELLOGAME_H */
+#ifndef OTHELLOPLAYER_H
+#define OTHELLOPLAYER_H
+
+/**
+ * @brief OthelloPlayer Class that defines interface for all bots
+ * @author Arun Tejasvi Chaganty <arunchaganty@gmail.com>
+ * @date 2010-02-01
+ */
+
+#include "Othello.h"
+#include "OthelloBoard.h"
+
+namespace Desdemona
+{
+    class OthelloPlayer
+    {
+        public:
+            Turn turn;
+
+            /**
+             * Default constructor
+             */
+            OthelloPlayer( Turn turn );
+            
+            /**
+             * Default destructor
+             */
+            virtual ~OthelloPlayer( ) {}
+
+            virtual Move play( const OthelloBoard& board );
+
+        private:
+
+    };
+
+    class BotException : public exception
+    {
+        public:
+            const OthelloPlayer& player;
+            BotException( const OthelloPlayer& player ) throw() :
+                player( player ) {}
+            ~BotException() throw() {}
+            const char* what() const throw()
+            {
+                return "Bot threw an unhandled exception.";
+            }
+    };
+}
+
+#endif /* #ifndef OTHELLOPLAYER_H */

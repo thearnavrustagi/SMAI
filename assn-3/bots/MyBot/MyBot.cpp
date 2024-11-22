@@ -4,158 +4,233 @@
 #include <cstdlib>
 #include <ctime>
 #include <list>
-#include <unordered_map>
 #include <algorithm>
 
 using namespace std;
 using namespace Desdemona;
 
-#define INF 1e18
-
-Turn my;
-clock_t start, finish;
+clock_t start;
+Turn myTurn;
 OthelloBoard globalBoard;
 
-bool canMove(char self, char opp, char *str) {
-    if (str[0] != opp) return false;
-    for (int ctr = 1; ctr < 8; ctr++) {
-        if (str[ctr] == 'e') return false;
-        if (str[ctr] == self) return true;
-    }
-    return false;
+// Weights for different squares on the board
+const int SQUARE_WEIGHTS[8][8] = {
+    {500, -150, 30,  10,  10,  30, -150,  500},
+    {-150, -250,  0,   0,   0,   0, -250, -150},
+    {30,     0,  1,   2,   2,   1,    0,   30},
+    {10,     0,  2,  16,  16,   2,    0,   10},
+    {10,     0,  2,  16,  16,   2,    0,   10},
+    {30,     0,  1,   2,   2,   1,    0,   30},
+    {-150, -250,  0,   0,   0,   0, -250, -150},
+    {500, -150, 30,  10,  10,  30, -150,  500}
+};
+
+// Check if a position is stable (cannot be flipped)
+bool isStable(const char grid[8][8], int x, int y) {
+    // Check if it's a corner
+    if((x == 0 || x == 7) && (y == 0 || y == 7)) 
+        return true;
+    
+    // Check horizontal stability
+    bool horizontalStable = true;
+    if(x > 0 && grid[x-1][y] == 'e') horizontalStable = false;
+    if(x < 7 && grid[x+1][y] == 'e') horizontalStable = false;
+    
+    // Check vertical stability
+    bool verticalStable = true;
+    if(y > 0 && grid[x][y-1] == 'e') verticalStable = false;
+    if(y < 7 && grid[x][y+1] == 'e') verticalStable = false;
+    
+    // Check diagonal stability
+    bool diagonalStable = true;
+    if(x > 0 && y > 0 && grid[x-1][y-1] == 'e') diagonalStable = false;
+    if(x < 7 && y < 7 && grid[x+1][y+1] == 'e') diagonalStable = false;
+    if(x > 0 && y < 7 && grid[x-1][y+1] == 'e') diagonalStable = false;
+    if(x < 7 && y > 0 && grid[x+1][y-1] == 'e') diagonalStable = false;
+    
+    return horizontalStable && verticalStable && diagonalStable;
 }
 
-bool isLegalMove(char self, char opp, char grid[8][8], int startx, int starty) {
-    if (grid[startx][starty] != 'e') return false;
-    char str[10];
-    int x, y, dx, dy, ctr;
-    for (dy = -1; dy <= 1; dy++)
-        for (dx = -1; dx <= 1; dx++) {
-            // keep going if both velocities are zero
-            if (!dy && !dx) continue;
-            str[0] = '\0';
-            for (ctr = 1; ctr < 8; ctr++) {
-                x = startx + ctr * dx;
-                y = starty + ctr * dy;
-                if (x >= 0 && y >= 0 && x < 8 && y < 8) str[ctr - 1] = grid[x][y];
-                else str[ctr - 1] = 0;
+// Count mobility (number of valid moves)
+int countMobility(const char grid[8][8], char player, char opponent) {
+    int mobility = 0;
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            if(grid[i][j] == 'e') {
+                // Check all 8 directions
+                const int dx[] = {-1,-1,-1,0,0,1,1,1};
+                const int dy[] = {-1,0,1,-1,1,-1,0,1};
+                
+                for(int dir = 0; dir < 8; dir++) {
+                    int x = i + dx[dir];
+                    int y = j + dy[dir];
+                    bool foundOpponent = false;
+                    
+                    while(x >= 0 && x < 8 && y >= 0 && y < 8) {
+                        if(grid[x][y] == opponent) foundOpponent = true;
+                        else if(grid[x][y] == player && foundOpponent) {
+                            mobility++;
+                            break;
+                        }
+                        else break;
+                        x += dx[dir];
+                        y += dy[dir];
+                    }
+                }
             }
-            if (canMove(self, opp, str)) return true;
         }
-    return false;
-}
-
-int numValidMoves(char self, char opp, char grid[8][8]) {
-    int count = 0, i, j;
-    for (i = 0; i < 8; i++) for (j = 0; j < 8; j++) if (isLegalMove(self, opp, grid, i, j)) count++;
-    return count;
-}
-
-double othelloBoardEvaluator(char grid[8][8]) {
-    // Implement your board evaluation function here
-    return 0.0;
-}
-
-double testMyMove(OthelloBoard board, Move move, Turn turn, short level, double alpha, double beta) {
-    finish = clock();
-    if (((double)(finish - start) / CLOCKS_PER_SEC) > 1.95) {
-        if (level & 1) return -INF;
-        return INF;
     }
-    if (level == 6) {
-        char grid[8][8];
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                Coin findTurn = board.get(i, j);
-                if (findTurn == turn) grid[i][j] = 'y';
-                else if (findTurn == other(turn)) grid[i][j] = 'm';
-                else grid[i][j] = 'e';
+    return mobility;
+}
+
+// Enhanced evaluation function
+double evaluatePosition(const OthelloBoard& board, Turn turn) {
+    char grid[8][8];
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            Coin findTurn = board.get(i, j);
+            if(findTurn == turn) grid[i][j] = 'y';
+            else if(findTurn == other(turn)) grid[i][j] = 'm';
+            else grid[i][j] = 'e';
+        }
+    }
+
+    double score = 0;
+    int myPieces = 0, oppPieces = 0;
+    int myStablePieces = 0, oppStablePieces = 0;
+    int totalPieces = 0;
+    
+    // Count pieces and calculate position value
+    for(int i = 0; i < 8; i++) {
+        for(int j = 0; j < 8; j++) {
+            if(grid[i][j] != 'e') totalPieces++;
+            
+            if(grid[i][j] == 'y') {
+                myPieces++;
+                if(isStable(grid, i, j)) {
+                    myStablePieces++;
+                    score += 30; // Bonus for stable pieces
+                }
+                score += SQUARE_WEIGHTS[i][j];
+            }
+            else if(grid[i][j] == 'm') {
+                oppPieces++;
+                if(isStable(grid, i, j)) {
+                    oppStablePieces++;
+                    score -= 30; // Penalty for opponent's stable pieces
+                }
+                score -= SQUARE_WEIGHTS[i][j];
             }
         }
-        return othelloBoardEvaluator(grid);
     }
+
+    // Mobility evaluation
+    int myMobility = countMobility(grid, 'y', 'm');
+    int oppMobility = countMobility(grid, 'm', 'y');
+    
+    // Early game: focus on mobility and position
+    if(totalPieces < 20) {
+        score += (myMobility - oppMobility) * 15;
+        score += (myStablePieces - oppStablePieces) * 20;
+    }
+    // Mid game: balance between mobility, position and piece count
+    else if(totalPieces < 45) {
+        score += (myMobility - oppMobility) * 10;
+        score += (myStablePieces - oppStablePieces) * 30;
+        score += (myPieces - oppPieces) * 5;
+    }
+    // End game: focus on piece count and stable pieces
+    else {
+        score += (myStablePieces - oppStablePieces) * 40;
+        score += (myPieces - oppPieces) * 20;
+    }
+    
+    // Parity advantage (having the last move)
+    if((64 - totalPieces) % 2 == 0) {
+        score += 5;
+    }
+
+    return score;
+}
+
+// SSS* search with alpha-beta pruning (same as before)
+double searchMove(OthelloBoard board, Move move, Turn turn, int depth, double alpha, double beta) {
+    clock_t finish = clock();
+    if(((double)(finish - start)/CLOCKS_PER_SEC) > 1.95) {
+        return (depth & 1) ? -1e18 : 1e18;
+    }
+
+    if(depth == 6) {
+        return evaluatePosition(board, myTurn);
+    }
+
     board.makeMove(turn, move);
     turn = other(turn);
-    list<Move> newMoves = board.getValidMoves(turn);
-    list<Move>::iterator iter = newMoves.begin();
-    double ret = -INF;
-    if (level & 1) ret *= -1;
-    if (!(newMoves.size())) return ret;
-    for (; iter != newMoves.end(); iter++) {
-        double curr = testMyMove(board, *iter, turn, level + 1, alpha, beta);
-        if (level & 1) {
-            ret = min(ret, curr);
-            beta = min(beta, ret);
+    list<Move> moves = board.getValidMoves(turn);
+
+    if(moves.empty()) {
+        return evaluatePosition(board, myTurn);
+    }
+
+    double value = (depth & 1) ? 1e18 : -1e18;
+    
+    for(Move nextMove : moves) {
+        double curr = searchMove(board, nextMove, turn, depth + 1, alpha, beta);
+        
+        if(depth & 1) {
+            value = min(value, curr);
+            beta = min(beta, value);
         } else {
-            ret = max(ret, curr);
-            alpha = max(alpha, ret);
+            value = max(value, curr);
+            alpha = max(alpha, value);
         }
-        if (beta <= alpha) break;
+        
+        if(beta <= alpha) break;
     }
-    return ret;
+
+    return value;
 }
 
-double tester(OthelloBoard board,Turn turn) {
-    char grid[8][8];
-    for(int i=0;i<8;i++) {
-        for(int j=0;j<8;j++) {
-        Coin findTurn = board.get(i,j);
-        if(findTurn == turn) grid[i][j] = 'm';
-        else if(findTurn == other(turn)) grid[i][j] = 'y';
-        else grid[i][j] = 'e';
-        }
-    }
-    return othelloBoardEvaluator(grid);
-}
-
-bool compare(Move a, Move b) {
-    OthelloBoard One = globalBoard,Two = globalBoard;
-    One.makeMove(my,a);
-    Two.makeMove(my,b);
-    return tester(One,my)>tester(Two,my);
+// Comparison function for move sorting (same as before)
+bool compareMove(Move a, Move b) {
+    OthelloBoard boardA = globalBoard, boardB = globalBoard;
+    boardA.makeMove(myTurn, a);
+    boardB.makeMove(myTurn, b);
+    return evaluatePosition(boardA, myTurn) > evaluatePosition(boardB, myTurn);
 }
 
 class MyBot : public OthelloPlayer {
 public:
-    MyBot(Turn turn);
-    virtual Move play(const OthelloBoard& board);
-
-private:
-};
-
-MyBot::MyBot(Turn turn)
-    : OthelloPlayer(turn) {
-}
-
-Move MyBot::play(const OthelloBoard& board) {
-    start = clock();
-    list<Move> moves = board.getValidMoves(turn);
-    my = turn;
-    globalBoard = board;
-    moves.sort(compare);
-    list<Move>::iterator it = moves.begin();
-    Move bestMove((*it).x, (*it).y);
-    double retVal = -INF;
-    double MAX = INF, MIN = -INF;
-    OthelloBoard copyBoard = board;
-    short level = 1;
-    for (; it != moves.end(); it++) {
-        double currValue = testMyMove(copyBoard, *it, turn, level, MIN, MAX);
-        if (currValue > retVal) {
-            retVal = currValue;
-            bestMove = *it;
+    MyBot(Turn turn) : OthelloPlayer(turn) {}
+    
+    virtual Move play(const OthelloBoard& board) {
+        start = clock();
+        myTurn = turn;
+        globalBoard = board;
+        
+        list<Move> moves = board.getValidMoves(turn);
+        if(moves.empty()) return Move::pass();
+        
+        moves.sort(compareMove);
+        Move bestMove = moves.front();
+        double bestValue = -1e18;
+        
+        OthelloBoard tempBoard;
+        for(Move move : moves) {
+            tempBoard = board;
+            double value = searchMove(tempBoard, move, turn, 1, -1e18, 1e18);
+            if(value > bestValue) {
+                bestValue = value;
+                bestMove = move;
+            }
         }
-        copyBoard = board;
+        
+        return bestMove;
     }
-    return bestMove;
-}
+};
 
 extern "C" {
     OthelloPlayer* createBot(Turn turn) {
         return new MyBot(turn);
-    }
-
-    void destroyBot(OthelloPlayer* bot) {
-        delete bot;
     }
 }
