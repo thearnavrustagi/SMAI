@@ -13,147 +13,128 @@ clock_t start;
 Turn myTurn;
 OthelloBoard globalBoard;
 
-// Weights for different squares on the board
+// Integrated weighted square values from first implementation
 const int SQUARE_WEIGHTS[8][8] = {
-    {500, -150, 30,  10,  10,  30, -150,  500},
-    {-150, -250,  0,   0,   0,   0, -250, -150},
-    {30,     0,  1,   2,   2,   1,    0,   30},
-    {10,     0,  2,  16,  16,   2,    0,   10},
-    {10,     0,  2,  16,  16,   2,    0,   10},
-    {30,     0,  1,   2,   2,   1,    0,   30},
-    {-150, -250,  0,   0,   0,   0, -250, -150},
-    {500, -150, 30,  10,  10,  30, -150,  500}
+    { 20, -3, 11, 8, 8, 11, -3, 20 },
+    { -3, -7, -4, 1, 1, -4, -7, -3 },
+    { 11, -4, 2, 2, 2, 2, -4, 11 },
+    { 8, 1, 2, -3, -3, 2, 1, 8 },
+    { 8, 1, 2, -3, -3, 2, 1, 8 },
+    { 11, -4, 2, 2, 2, 2, -4, 11 },
+    { -3, -7, -4, 1, 1, -4, -7, -3 },
+    { 20, -3, 11, 8, 8, 11, -3, 20 }
 };
 
-// Check if a position is stable (cannot be flipped)
-bool isStable(const char grid[8][8], int x, int y) {
-    // Check if it's a corner
-    if((x == 0 || x == 7) && (y == 0 || y == 7)) 
-        return true;
-    
-    // Check horizontal stability
-    bool horizontalStable = true;
-    if(x > 0 && grid[x-1][y] == 'e') horizontalStable = false;
-    if(x < 7 && grid[x+1][y] == 'e') horizontalStable = false;
-    
-    // Check vertical stability
-    bool verticalStable = true;
-    if(y > 0 && grid[x][y-1] == 'e') verticalStable = false;
-    if(y < 7 && grid[x][y+1] == 'e') verticalStable = false;
-    
-    // Check diagonal stability
-    bool diagonalStable = true;
-    if(x > 0 && y > 0 && grid[x-1][y-1] == 'e') diagonalStable = false;
-    if(x < 7 && y < 7 && grid[x+1][y+1] == 'e') diagonalStable = false;
-    if(x > 0 && y < 7 && grid[x-1][y+1] == 'e') diagonalStable = false;
-    if(x < 7 && y > 0 && grid[x+1][y-1] == 'e') diagonalStable = false;
-    
-    return horizontalStable && verticalStable && diagonalStable;
+// Mobility and edge calculation functions
+int moveCalc(char self, char opp, char grid[8][8]) {
+    int count = 0;
+    for (int i = 0; i < 8; i++) 
+        for (int j = 0; j < 8; j++) {
+            if (grid[i][j] != 'e') continue;
+            
+            const int dx[] = {-1,-1,-1,0,0,1,1,1};
+            const int dy[] = {-1,0,1,-1,1,-1,0,1};
+            
+            for (int dir = 0; dir < 8; dir++) {
+                int x = i + dx[dir], y = j + dy[dir];
+                bool foundOpp = false;
+                
+                while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (grid[x][y] == opp) foundOpp = true;
+                    else if (grid[x][y] == self && foundOpp) {
+                        count++;
+                        break;
+                    }
+                    else break;
+                    x += dx[dir];
+                    y += dy[dir];
+                }
+            }
+        }
+    return count;
 }
 
-// Count mobility (number of valid moves)
-int countMobility(const char grid[8][8], char player, char opponent) {
-    int mobility = 0;
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
-            if(grid[i][j] == 'e') {
-                // Check all 8 directions
-                const int dx[] = {-1,-1,-1,0,0,1,1,1};
-                const int dy[] = {-1,0,1,-1,1,-1,0,1};
-                
-                for(int dir = 0; dir < 8; dir++) {
-                    int x = i + dx[dir];
-                    int y = j + dy[dir];
-                    bool foundOpponent = false;
-                    
-                    while(x >= 0 && x < 8 && y >= 0 && y < 8) {
-                        if(grid[x][y] == opponent) foundOpponent = true;
-                        else if(grid[x][y] == player && foundOpponent) {
-                            mobility++;
-                            break;
-                        }
-                        else break;
-                        x += dx[dir];
-                        y += dy[dir];
+// Enhanced board evaluation function
+double evaluateBoard(const OthelloBoard& board, Turn turn) {
+    char grid[8][8];
+    char my_color = 'y', opp_color = 'm';
+    
+    // Convert board to grid
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            Coin findTurn = board.get(i, j);
+            if (findTurn == turn) grid[i][j] = my_color;
+            else if (findTurn == other(turn)) grid[i][j] = opp_color;
+            else grid[i][j] = 'e';
+        }
+    }
+
+    int myTiles = 0, oppTiles = 0;
+    int myFrontTiles = 0, oppFrontTiles = 0;
+    double p = 0.0, c = 0.0, l = 0.0, m = 0.0, f = 0.0, d = 0.0;
+
+    const int X1[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+    const int Y1[] = {0, 1, 1, 1, 0, -1, -1, -1};
+
+    // Piece difference, frontier disks, and disk squares
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (grid[i][j] == my_color) {
+                d += SQUARE_WEIGHTS[i][j];
+                myTiles++;
+            } 
+            else if (grid[i][j] == opp_color) {
+                d -= SQUARE_WEIGHTS[i][j];
+                oppTiles++;
+            }
+            
+            // Frontier tiles calculation
+            if (grid[i][j] != 'e') {
+                for (int k = 0; k < 8; k++) {
+                    int x = i + X1[k], y = j + Y1[k];
+                    if (x >= 0 && x < 8 && y >= 0 && y < 8 && grid[x][y] == 'e') {
+                        if (grid[i][j] == my_color) myFrontTiles++;
+                        else oppFrontTiles++;
+                        break;
                     }
                 }
             }
         }
     }
-    return mobility;
-}
 
-// Enhanced evaluation function
-double evaluatePosition(const OthelloBoard& board, Turn turn) {
-    char grid[8][8];
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
-            Coin findTurn = board.get(i, j);
-            if(findTurn == turn) grid[i][j] = 'y';
-            else if(findTurn == other(turn)) grid[i][j] = 'm';
-            else grid[i][j] = 'e';
-        }
-    }
+    // Piece difference score
+    if (myTiles > oppTiles) p = (100.0 * myTiles) / (myTiles + oppTiles);
+    else if (myTiles < oppTiles) p = -(100.0 * oppTiles) / (myTiles + oppTiles);
 
-    double score = 0;
-    int myPieces = 0, oppPieces = 0;
-    int myStablePieces = 0, oppStablePieces = 0;
-    int totalPieces = 0;
-    
-    // Count pieces and calculate position value
-    for(int i = 0; i < 8; i++) {
-        for(int j = 0; j < 8; j++) {
-            if(grid[i][j] != 'e') totalPieces++;
-            
-            if(grid[i][j] == 'y') {
-                myPieces++;
-                if(isStable(grid, i, j)) {
-                    myStablePieces++;
-                    score += 30; // Bonus for stable pieces
-                }
-                score += SQUARE_WEIGHTS[i][j];
-            }
-            else if(grid[i][j] == 'm') {
-                oppPieces++;
-                if(isStable(grid, i, j)) {
-                    oppStablePieces++;
-                    score -= 30; // Penalty for opponent's stable pieces
-                }
-                score -= SQUARE_WEIGHTS[i][j];
-            }
-        }
-    }
+    // Frontier tiles score
+    if (myFrontTiles > oppFrontTiles) 
+        f = -(100.0 * myFrontTiles) / (myFrontTiles + oppFrontTiles);
+    else if (myFrontTiles < oppFrontTiles) 
+        f = (100.0 * oppFrontTiles) / (myFrontTiles + oppFrontTiles);
 
-    // Mobility evaluation
-    int myMobility = countMobility(grid, 'y', 'm');
-    int oppMobility = countMobility(grid, 'm', 'y');
-    
-    // Early game: focus on mobility and position
-    if(totalPieces < 20) {
-        score += (myMobility - oppMobility) * 15;
-        score += (myStablePieces - oppStablePieces) * 20;
+    // Corner occupancy
+    int myCorners = 0, oppCorners = 0;
+    int cornerPositions[][2] = {{0, 0}, {0, 7}, {7, 0}, {7, 7}};
+    for (auto& pos : cornerPositions) {
+        if (grid[pos[0]][pos[1]] == my_color) myCorners++;
+        else if (grid[pos[0]][pos[1]] == opp_color) oppCorners++;
     }
-    // Mid game: balance between mobility, position and piece count
-    else if(totalPieces < 45) {
-        score += (myMobility - oppMobility) * 10;
-        score += (myStablePieces - oppStablePieces) * 30;
-        score += (myPieces - oppPieces) * 5;
-    }
-    // End game: focus on piece count and stable pieces
-    else {
-        score += (myStablePieces - oppStablePieces) * 40;
-        score += (myPieces - oppPieces) * 20;
-    }
-    
-    // Parity advantage (having the last move)
-    if((64 - totalPieces) % 2 == 0) {
-        score += 5;
-    }
+    c = 25 * (myCorners - oppCorners);
 
+    // Mobility
+    int myMobility = moveCalc(my_color, opp_color, grid);
+    int oppMobility = moveCalc(opp_color, my_color, grid);
+    if (myMobility > oppMobility) 
+        m = (100.0 * myMobility) / (myMobility + oppMobility);
+    else if (myMobility < oppMobility) 
+        m = -(100.0 * oppMobility) / (myMobility + oppMobility);
+
+    // Final weighted score
+    double score = (100 * p) + (490 * c) + (380 * l) + (86 * m) + (78 * f) + (16 * d);
     return score;
 }
 
-// SSS* search with alpha-beta pruning (same as before)
+// SSS* search with alpha-beta pruning
 double searchMove(OthelloBoard board, Move move, Turn turn, int depth, double alpha, double beta) {
     clock_t finish = clock();
     if(((double)(finish - start)/CLOCKS_PER_SEC) > 1.95) {
@@ -161,7 +142,7 @@ double searchMove(OthelloBoard board, Move move, Turn turn, int depth, double al
     }
 
     if(depth == 6) {
-        return evaluatePosition(board, myTurn);
+        return evaluateBoard(board, myTurn);
     }
 
     board.makeMove(turn, move);
@@ -169,7 +150,7 @@ double searchMove(OthelloBoard board, Move move, Turn turn, int depth, double al
     list<Move> moves = board.getValidMoves(turn);
 
     if(moves.empty()) {
-        return evaluatePosition(board, myTurn);
+        return evaluateBoard(board, myTurn);
     }
 
     double value = (depth & 1) ? 1e18 : -1e18;
@@ -191,12 +172,12 @@ double searchMove(OthelloBoard board, Move move, Turn turn, int depth, double al
     return value;
 }
 
-// Comparison function for move sorting (same as before)
+// Comparison function for move sorting
 bool compareMove(Move a, Move b) {
     OthelloBoard boardA = globalBoard, boardB = globalBoard;
     boardA.makeMove(myTurn, a);
     boardB.makeMove(myTurn, b);
-    return evaluatePosition(boardA, myTurn) > evaluatePosition(boardB, myTurn);
+    return evaluateBoard(boardA, myTurn) > evaluateBoard(boardB, myTurn);
 }
 
 class MyBot : public OthelloPlayer {
